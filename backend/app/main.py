@@ -6,6 +6,7 @@ from app.api.routes_hives import router as hives_router
 from app.api.routes_webhooks import router as webhooks_router
 from app.core.settings import settings
 from app.db.engine import create_db_and_tables
+from app.api.routes_hives import router as hives_router
 
 
 app = FastAPI(title="IBEE Backend", version="0.1.0")
@@ -30,6 +31,7 @@ def on_startup() -> None:
 app.include_router(health_router, tags=["health"])
 app.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
 app.include_router(hives_router, prefix="/api", tags=["api"])
+app.include_router(hives_router, prefix="/api")
 
 
 @app.get("/")

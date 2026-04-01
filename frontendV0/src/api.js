@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://localhost:8000/api";
 
 export async function getHives() {
   const res = await fetch(`${API_BASE}/hives`);
