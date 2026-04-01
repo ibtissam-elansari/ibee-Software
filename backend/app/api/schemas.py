@@ -6,6 +6,20 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+# ---------- INPUT SCHEMAS ----------
+
+class HiveCreate(BaseModel):
+    name: str
+    location_name: Optional[str] = None
+
+
+class DeviceCreate(BaseModel):
+    dev_eui: str
+    hive_id: Optional[int] = None
+
+
+# ---------- OUTPUT SCHEMAS ----------
+
 class HiveOut(BaseModel):
     id: int
     name: str
