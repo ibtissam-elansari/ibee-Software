@@ -1,0 +1,110 @@
+name: ibee
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: ibee
+      POSTGRES_PASSWORD: ibee
+      POSTGRES_DB: ibee
+    ports:
+      - "5432:5432"
+    volumes:
+      - ibee_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ibee -d ibee"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ../backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://ibee:ibee@db:5432/ibee
+      LOG_LEVEL: info
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  adminer:
+    image: adminer:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+
+  # Optional ChirpStack stack (local dev)
+  mqtt:
+    image: eclipse-mosquitto:2
+    profiles: ["chirpstack"]
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./chirpstack/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  chirpstack-db:
+    image: postgres:14-alpine
+    profiles: ["chirpstack"]
+    environment:
+      POSTGRES_USER: chirpstack
+      POSTGRES_PASSWORD: chirpstack
+      POSTGRES_DB: chirpstack
+    volumes:
+      - chirpstack_db:/var/lib/postgresql/data
+      - ./chirpstack/postgresql-initdb:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chirpstack -d chirpstack"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7
+    profiles: ["chirpstack"]
+    ports:
+      - "6379:6379"
+
+  gateway-bridge:
+    image: chirpstack/chirpstack-gateway-bridge:4
+    profiles: ["chirpstack"]
+    command: ["-c", "/etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml"]
+    environment:
+      INTEGRATION__MQTT__EVENT_TOPIC_TEMPLATE: eu868/gateway/{{ .GatewayID }}/event/{{ .EventType }}
+      INTEGRATION__MQTT__STATE_TOPIC_TEMPLATE: eu868/gateway/{{ .GatewayID }}/state/{{ .StateType }}
+      INTEGRATION__MQTT__COMMAND_TOPIC_TEMPLATE: eu868/gateway/{{ .GatewayID }}/command/#
+    ports:
+      - "1700:1700/udp"
+    volumes:
+      - ./chirpstack/chirpstack-gateway-bridge.toml:/etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml:ro
+    depends_on:
+      mqtt:
+        condition: service_started
+
+  chirpstack:
+    image: chirpstack/chirpstack:4
+    profiles: ["chirpstack"]
+    command: ["--config", "/etc/chirpstack"]
+    environment:
+      MQTT_BROKER_HOST: mqtt
+      REDIS_HOST: redis
+      POSTGRESQL_HOST: chirpstack-db
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./chirpstack/chirpstack.toml:/etc/chirpstack/chirpstack.toml:ro
+    depends_on:
+      chirpstack-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      mqtt:
+        condition: service_started
+
+volumes:
+  ibee_db:
+  chirpstack_db:
+
