@@ -17,13 +17,16 @@ class Device(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     dev_eui: str = Field(index=True, unique=True)
     hive_id: Optional[int] = Field(default=None, foreign_key="hive.id", index=True)
+
     status: str = Field(default="unknown", index=True)
     last_seen_at: Optional[datetime] = Field(default=None, index=True)
+
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 
 
 class Measurement(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+
     device_id: int = Field(foreign_key="device.id", index=True)
     ts: datetime = Field(default_factory=datetime.utcnow, index=True)
 
