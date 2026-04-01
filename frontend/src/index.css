@@ -1,0 +1,23 @@
+:root {
+  --bg     : #0c0e14;
+  --card   : #13161f;
+  --border : rgba(255,255,255,0.08);
+  --text   : #f0f0f0;
+  --muted  : #6b7280;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family      : 'DM Sans', system-ui, sans-serif;
+  background       : var(--bg);
+  color            : var(--text);
+  min-height       : 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Recharts tooltip fix in dark mode */
+.recharts-tooltip-wrapper { outline: none; }
+
+/* Leaflet dark mode fix */
+.leaflet-container { background: #1a1d27; }
