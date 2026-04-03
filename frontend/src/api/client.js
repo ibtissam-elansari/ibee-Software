@@ -5,20 +5,13 @@ const http = axios.create({
   timeout: 8000,
 })
 
-// Get all hives
-export const getHives = () =>
-  http.get('/api/hives').then(r => r.data)
+// ── Hive endpoints ───────────────────────────────────────────────────────────
+export const getHives   = ()              => http.get('/api/hives').then(r => r.data)
+export const getHive    = (id)            => http.get(`/api/hives/${id}`).then(r => r.data)
+export const getLatest  = (id)            => http.get(`/api/hives/${id}/latest`).then(r => r.data)
+export const getStats   = (id)            => http.get(`/api/hives/${id}/stats`).then(r => r.data)
+export const getHistory = (id, limit=100) => http.get(`/api/hives/${id}/history`, { params: { limit } }).then(r => r.data)
 
-// Get one hive
-export const getHive = (hiveId) =>
-  http.get(`/api/hives/${hiveId}`).then(r => r.data)
-
-// Get the latest measurement for a hive
-export const getLatest = (hiveId) =>
-  http.get(`/api/hives/${hiveId}/latest`).then(r => r.data)
-
-// Get history for a device (last N points, newest first)
-export const getHistory = (devEui, limit = 100) =>
-  http.get(`/api/devices/${devEui}/history`, {
-    params: { limit },
-  }).then(r => r.data)
+// ── Device endpoints ─────────────────────────────────────────────────────────
+export const getDeviceHistory = (devEui, limit=100) =>
+  http.get(`/api/devices/${devEui}/history`, { params: { limit } }).then(r => r.data)

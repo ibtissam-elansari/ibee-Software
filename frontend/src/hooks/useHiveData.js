@@ -1,50 +1,78 @@
-import { useState, useEffect, useCallback } from 'react'
-import { getHives, getLatest, getHistory } from '../api/client'
+import { useState, useEffect } from 'react'
+import { getHives, getStats } from '../api/client'
 
-const POLL_INTERVAL_MS = 10_000
+const API = 'http://localhost:8000'
 
 export function useHiveData(hiveId) {
   const [hives,   setHives]   = useState([])
   const [latest,  setLatest]  = useState(null)
   const [history, setHistory] = useState([])
+  const [stats,   setStats]   = useState(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
 
-  // Load hive list once on mount
+  // ── Load hive list once on mount ─────────────────────────────────────────
   useEffect(() => {
     getHives()
       .then(setHives)
       .catch(e => setError(e.message))
   }, [])
 
-  const fetchData = useCallback(() => {
+  // ── Load initial history + stats when hiveId changes ─────────────────────
+  useEffect(() => {
     if (!hiveId) return
-    Promise.all([
-      getLatest(hiveId),
-      // history is fetched by dev_eui — we get it from latest
-    ])
-      .then(([lat]) => {
-        setLatest(lat)
-        setError(null)
-        return getHistory(lat.device_dev_eui, 100)
+    setLoading(true)
+
+    fetch(`${API}/api/hives/${hiveId}/history?limit=100`)
+      .then(r => {
+        if (!r.ok) throw new Error(`History fetch failed: HTTP ${r.status}`)
+        return r.json()
       })
-      .then(hist => {
-        // API returns newest-first; reverse for charts (oldest → newest)
-        setHistory([...hist].reverse())
+      .then(data => {
+        setHistory(data)
         setLoading(false)
       })
       .catch(e => {
-        setError(e.response?.data?.detail || e.message)
+        setError(e.message)
         setLoading(false)
       })
+
+    getStats(hiveId)
+      .then(setStats)
+      .catch(() => {})
+
   }, [hiveId])
 
-  // Initial fetch + polling
+  // ── SSE live stream ───────────────────────────────────────────────────────
   useEffect(() => {
-    fetchData()
-    const id = setInterval(fetchData, POLL_INTERVAL_MS)
-    return () => clearInterval(id)
-  }, [fetchData])
+    if (!hiveId) return
 
-  return { hives, latest, history, loading, error }
+    const es = new EventSource(`${API}/api/hives/${hiveId}/stream`)
+
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        setLatest(data)
+        setHistory(prev => {
+          const updated = [...prev.slice(-99), data]
+          if (updated.length % 10 === 0) {
+            getStats(hiveId).then(setStats).catch(() => {})
+          }
+          return updated
+        })
+        setError(null)
+        setLoading(false)
+      } catch {
+        // keep-alive comment from server — ignore
+      }
+    }
+
+    es.onerror = () => {
+      setError('Stream reconnecting…')
+    }
+
+    return () => es.close()
+  }, [hiveId])
+
+  return { hives, latest, history, stats, loading, error }
 }
