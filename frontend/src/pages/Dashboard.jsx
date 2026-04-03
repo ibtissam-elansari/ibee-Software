@@ -21,7 +21,7 @@ const battPct = (v) => {
 
 export default function Dashboard() {
   const [hiveId, setHiveId] = useState(1)
-  const { hives, latest, history, loading, error } = useHiveData(hiveId)
+  const { hives, latest, history, stats, loading, error } = useHiveData(hiveId)
 
   const currentHive = hives.find(h => h.id === hiveId)
 
@@ -29,7 +29,11 @@ export default function Dashboard() {
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 24px' }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        alignItems: 'flex-start', marginBottom: 32,
+        flexWrap: 'wrap', gap: 16,
+      }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
             <span style={{ fontSize: 28 }}>🐝</span>
@@ -45,7 +49,6 @@ export default function Dashboard() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          {/* Hive selector */}
           {hives.length > 1 && (
             <select
               value={hiveId}
@@ -62,10 +65,10 @@ export default function Dashboard() {
             </select>
           )}
 
-          {/* Status pill */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            background: 'var(--card)', border: `1px solid ${error ? 'rgba(239,68,68,0.4)' : 'rgba(74,222,128,0.3)'}`,
+            background: 'var(--card)',
+            border: `1px solid ${error ? 'rgba(239,68,68,0.4)' : 'rgba(74,222,128,0.3)'}`,
             borderRadius: 20, padding: '8px 16px',
           }}>
             <span style={{
@@ -85,9 +88,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Error state ── */}
+      {/* ── Error banner ── */}
       {error && (
-        <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '14px 20px', marginBottom: 24, color: '#ef4444', fontSize: 14 }}>
+        <div style={{
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)',
+          borderRadius: 10, padding: '14px 20px', marginBottom: 24,
+          color: '#ef4444', fontSize: 14,
+        }}>
           ⚠️ {error}
         </div>
       )}
@@ -95,21 +102,59 @@ export default function Dashboard() {
       {/* ── Alert banner ── */}
       <AlertBanner latest={latest} />
 
-      {/* ── Stat cards row 1 ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 14 }}>
+      {/* ── Row 1: live sensor values ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: 14, marginBottom: 14,
+      }}>
         <StatCard label="Temperature" value={latest?.temperature_c?.toFixed(1)} unit="°C"  accent="#f97316" icon="🌡️" />
         <StatCard label="Humidity"    value={latest?.humidity_pct?.toFixed(1)}  unit="%"   accent="#38bdf8" icon="💧" />
-        <StatCard label="Battery"     value={battPct(latest?.battery_v)}         unit="%"   accent="#4ade80" icon="🔋" alert={latest?.battery_v < 3.5} />
+        <StatCard label="Battery"     value={battPct(latest?.battery_v)}         unit="%"   accent="#4ade80" icon="🔋" alert={latest?.battery_v != null && latest.battery_v < 3.5} />
         <StatCard label="Battery V"   value={latest?.battery_v?.toFixed(2)}      unit="V"   accent="#4ade80" icon="⚡" />
       </div>
 
-      {/* ── Stat cards row 2 ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
-        <StatCard label="Door"   value={latest?.door_open ? 'Open' : 'Closed'} unit="" accent={latest?.door_open ? '#ef4444' : '#4ade80'} icon="🚪" alert={latest?.door_open} />
-        <StatCard label="Sound"  value={latest?.sound_level > 0 ? `Level ${latest.sound_level}` : 'Quiet'} unit="" accent={latest?.sound_level > 0 ? '#f97316' : '#4ade80'} icon="🔊" alert={latest?.sound_level > 0} />
-        <StatCard label="RSSI"   value={latest?.rssi}                            unit="dBm" accent="#a78bfa" icon="📡" />
-        <StatCard label="SNR"    value={latest?.snr?.toFixed(1)}                 unit="dB"  accent="#fb923c" icon="〰️" />
+      {/* ── Row 2: status + signal ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: 14, marginBottom: 14,
+      }}>
+        <StatCard
+          label="Door"
+          value={latest?.door_open != null ? (latest.door_open ? 'Open' : 'Closed') : null}
+          unit=""
+          accent={latest?.door_open ? '#ef4444' : '#4ade80'}
+          icon="🚪"
+          alert={latest?.door_open}
+        />
+        <StatCard
+          label="Sound"
+          value={latest?.sound_level != null ? (latest.sound_level > 50 ? `Level ${latest.sound_level}` : 'Quiet') : null}
+          unit=""
+          accent={latest?.sound_level > 50 ? '#f97316' : '#4ade80'}
+          icon="🔊"
+          alert={latest?.sound_level > 50}
+        />
+        <StatCard label="RSSI" value={latest?.rssi}            unit="dBm" accent="#a78bfa" icon="📡" />
+        <StatCard label="SNR"  value={latest?.snr?.toFixed(1)} unit="dB"  accent="#fb923c" icon="〰️" />
       </div>
+
+      {/* ── Row 3: aggregate stats (shown once stats load) ── */}
+      {stats && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 14, marginBottom: 24,
+        }}>
+          <StatCard label="Total readings"   value={stats.total_measurements}            unit=""   accent="#94a3b8" icon="📊" />
+          <StatCard label="Avg temperature"  value={stats.avg_temperature_c?.toFixed(1)} unit="°C" accent="#f97316" icon="📈" />
+          <StatCard label="Avg humidity"     value={stats.avg_humidity_pct?.toFixed(1)}  unit="%"  accent="#38bdf8" icon="📈" />
+          <StatCard label="Sound events"     value={stats.sound_events}                  unit=""   accent="#f97316" icon="🔊" alert={stats.sound_events > 0} />
+          <StatCard label="Door open events" value={stats.door_open_events}              unit=""   accent="#e76f51" icon="🚪" alert={stats.door_open_events > 0} />
+          <StatCard label="Min battery"      value={stats.min_battery_v?.toFixed(2)}     unit="V"  accent="#4ade80" icon="🔋" alert={stats.min_battery_v != null && stats.min_battery_v < 3.5} />
+        </div>
+      )}
 
       {/* ── Main chart ── */}
       <div style={{ marginBottom: 14 }}>
@@ -128,9 +173,14 @@ export default function Dashboard() {
         <HistoryTable data={history} />
       </div>
 
+      {/* ── Footer ── */}
       <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11, letterSpacing: '0.05em' }}>
-        I-BEE v1.0 · agri4.0 · polling every 10 s · device {latest?.device_dev_eui || '—'}
+        I-BEE v1.0 · agri4.0 · live via SSE · device {latest?.device_dev_eui || '—'}
+        {stats?.first_seen && (
+          <> · data since {format(parseISO(stats.first_seen), 'MMM d, yyyy')}</>
+        )}
       </div>
+
     </div>
   )
 }

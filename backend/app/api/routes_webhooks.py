@@ -4,8 +4,10 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
 
+from app.api.routes_hives import update_sse_cache
 from app.core.payload_v1 import decode_payload_v1_from_base64
 from app.db.engine import get_session
 from app.models.models import Device, Measurement
@@ -16,83 +18,129 @@ router = APIRouter()
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
-
-def _get_or_create_device(session: Session, dev_eui: str) -> Device:
+async def _get_or_create_device(session: AsyncSession, dev_eui: str) -> Device:
     dev_eui = dev_eui.lower()
-    device = session.exec(select(Device).where(Device.dev_eui == dev_eui)).first()
+    result  = await session.execute(select(Device).where(Device.dev_eui == dev_eui))
+    device  = result.scalars().first()
     if device:
         return device
     device = Device(dev_eui=dev_eui, status="online", last_seen_at=_utcnow())
     session.add(device)
-    session.commit()
-    session.refresh(device)
+    await session.commit()
+    await session.refresh(device)
     return device
 
-
 @router.post("/chirpstack/uplink")
-def chirpstack_uplink(payload: dict[str, Any], session: Session = Depends(get_session)) -> dict:
+async def chirpstack_uplink(
+    payload : dict[str, Any],
+    session : AsyncSession = Depends(get_session),
+) -> dict:
     """
-    Accepts ChirpStack v4 uplink event.
+    Receives ChirpStack v4 HTTP integration uplink events.
 
-    Works with either:
-    - decoded object: payload["object"] (dict)
-    - raw base64: payload["data"] (string) + backend decoding (payload v1)
+    Supports two payload shapes:
+      1. Decoded object:  payload["object"]  (when JS codec is configured)
+      2. Raw base64:      payload["data"]    (when no codec — recommended)
+
+    After persisting the measurement, updates the SSE cache so connected
+    dashboard clients receive the new data instantly.
     """
-    dev_eui = payload.get("deviceInfo", {}).get("devEui") or payload.get("devEui")
+    # ── Extract DevEUI ───────────────────────────────────────────────────────
+    dev_eui = (
+        payload.get("deviceInfo", {}).get("devEui")
+        or payload.get("devEui")
+    )
     if not dev_eui:
         raise HTTPException(status_code=400, detail="missing devEui / deviceInfo.devEui")
 
-    device = _get_or_create_device(session, dev_eui)
-    device.status = "online"
+    # ── Update device status ─────────────────────────────────────────────────
+    device              = await _get_or_create_device(session, dev_eui)
+    device.status       = "online"
     device.last_seen_at = _utcnow()
     session.add(device)
-    session.commit()
+    await session.commit()
+    await session.refresh(device)
 
-    ts = payload.get("time")
-    if ts:
+    # ── Parse timestamp ──────────────────────────────────────────────────────
+    ts_raw = payload.get("time")
+    if ts_raw:
         try:
-            ts_dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            ts_dt = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
         except Exception:
             ts_dt = _utcnow()
     else:
         ts_dt = _utcnow()
 
-    rx_info = (payload.get("rxInfo") or [{}])[0] if isinstance(payload.get("rxInfo"), list) else {}
-    rssi = rx_info.get("rssi")
-    snr = rx_info.get("snr")
+    # ── Extract signal info ──────────────────────────────────────────────────
+    rx_list = payload.get("rxInfo") or []
+    rx_info = rx_list[0] if isinstance(rx_list, list) and rx_list else {}
+    rssi    = rx_info.get("rssi")
+    snr     = rx_info.get("snr")
 
+    # ── Decode payload (object path OR binary path) ──────────────────────────
     decoded: Optional[dict[str, Any]] = payload.get("object")
+
     if decoded is None:
         data_b64 = payload.get("data")
         if not data_b64:
-            raise HTTPException(status_code=400, detail="missing object or data(base64)")
-        decoded_v1 = decode_payload_v1_from_base64(data_b64)
-        decoded = {
-            "temperature_c": decoded_v1.temperature_c,
-            "humidity_pct": decoded_v1.humidity_pct,
-            "sound_level": decoded_v1.sound_level,
-            "door_open": decoded_v1.door_open,
-            "gps_lat": decoded_v1.gps_lat,
-            "gps_lng": decoded_v1.gps_lng,
-            "battery_v": decoded_v1.battery_v,
-        }
+            raise HTTPException(
+                status_code=400,
+                detail="missing both 'object' and 'data' fields",
+            )
+        try:
+            p = decode_payload_v1_from_base64(data_b64)
+            decoded = {
+                "temperature_c" : p.temperature_c,
+                "humidity_pct"  : p.humidity_pct,
+                "sound_level"   : p.sound_level,
+                "door_open"     : p.door_open,
+                "gps_lat"       : p.gps_lat,
+                "gps_lng"       : p.gps_lng,
+                "battery_v"     : p.battery_v,
+            }
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"payload decode error: {exc}")
 
+    # ── Persist measurement ──────────────────────────────────────────────────
     m = Measurement(
-        device_id=device.id,  # type: ignore[arg-type]
-        ts=ts_dt,
-        temperature_c=decoded.get("temperature_c"),
-        humidity_pct=decoded.get("humidity_pct"),
-        sound_level=decoded.get("sound_level"),
-        door_open=decoded.get("door_open"),
-        gps_lat=decoded.get("gps_lat"),
-        gps_lng=decoded.get("gps_lng"),
-        battery_v=decoded.get("battery_v"),
-        rssi=rssi,
-        snr=snr,
+        device_id     = device.id,
+        ts            = ts_dt,
+        temperature_c = decoded.get("temperature_c"),
+        humidity_pct  = decoded.get("humidity_pct"),
+        sound_level   = decoded.get("sound_level"),
+        door_open     = decoded.get("door_open"),
+        gps_lat       = decoded.get("gps_lat"),
+        gps_lng       = decoded.get("gps_lng"),
+        battery_v     = decoded.get("battery_v"),
+        rssi          = rssi,
+        snr           = snr,
     )
     session.add(m)
-    session.commit()
-    session.refresh(m)
+    await session.commit()
+    await session.refresh(m)
 
-    return {"ok": True, "device_dev_eui": device.dev_eui, "measurement_id": m.id}
+    # ── Push to SSE stream ───────────────────────────────────────────────────
+    # Notify any connected dashboard clients instantly (no polling needed)
+    if device.hive_id is not None:
+        sse_payload = {
+            "id"            : m.id,
+            "ts"            : m.ts.isoformat(),
+            "device_dev_eui": device.dev_eui,
+            "temperature_c" : m.temperature_c,
+            "humidity_pct"  : m.humidity_pct,
+            "sound_level"   : m.sound_level,
+            "door_open"     : m.door_open,
+            "gps_lat"       : m.gps_lat,
+            "gps_lng"       : m.gps_lng,
+            "battery_v"     : m.battery_v,
+            "rssi"          : m.rssi,
+            "snr"           : m.snr,
+        }
+        update_sse_cache(device.hive_id, sse_payload)
 
+    return {
+        "ok"             : True,
+        "device_dev_eui" : device.dev_eui,
+        "measurement_id" : m.id,
+        "hive_id"        : device.hive_id,
+    }
