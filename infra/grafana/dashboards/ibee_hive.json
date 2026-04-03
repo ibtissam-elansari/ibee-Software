@@ -1,0 +1,387 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": { "list": [] },
+  "description": "IBEE — Ruche connectée : température, humidité, batterie, son, porte",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+
+    {
+      "id": 1,
+      "title": "Température interne (°C)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "celsius",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue",  "value": null },
+              { "color": "green", "value": 30 },
+              { "color": "red",   "value": 40 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  m.ts AS \"time\",\n  m.temperature_c AS \"Température (°C)\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1\n  AND m.ts BETWEEN $__timeFrom() AND $__timeTo()\n  AND m.temperature_c IS NOT NULL\nORDER BY m.ts ASC",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 2,
+      "title": "Humidité interne (%)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  m.ts AS \"time\",\n  m.humidity_pct AS \"Humidité (%)\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1\n  AND m.ts BETWEEN $__timeFrom() AND $__timeTo()\n  AND m.humidity_pct IS NOT NULL\nORDER BY m.ts ASC",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 3,
+      "title": "Température actuelle",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 8, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue",  "value": null },
+              { "color": "green", "value": 30 },
+              { "color": "red",   "value": 40 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  m.ts AS \"time\",\n  m.temperature_c AS \"Température\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1\n  AND m.temperature_c IS NOT NULL\nORDER BY m.ts DESC\nLIMIT 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 4,
+      "title": "Humidité actuelle",
+      "type": "stat",
+      "gridPos": { "x": 4, "y": 8, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "green",  "value": 50 },
+              { "color": "yellow", "value": 80 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  m.ts AS \"time\",\n  m.humidity_pct AS \"Humidité\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1\n  AND m.humidity_pct IS NOT NULL\nORDER BY m.ts DESC\nLIMIT 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "title": "Batterie actuelle",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 8, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "volt",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "yellow", "value": 3.5 },
+              { "color": "green",  "value": 3.8 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  m.ts AS \"time\",\n  m.battery_v AS \"Batterie (V)\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1\n  AND m.battery_v IS NOT NULL\nORDER BY m.ts DESC\nLIMIT 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "title": "État porte",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 8, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "Fermée", "color": "green" }, "1": { "text": "Ouverte", "color": "red" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  m.ts AS \"time\",\n  CASE WHEN m.door_open THEN 1 ELSE 0 END AS \"Porte\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1\nORDER BY m.ts DESC\nLIMIT 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 7,
+      "title": "Signal RSSI (dBm)",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 8, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dBm",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "yellow", "value": -100 },
+              { "color": "green",  "value": -80 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  m.ts AS \"time\",\n  m.rssi AS \"RSSI\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1\n  AND m.rssi IS NOT NULL\nORDER BY m.ts DESC\nLIMIT 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 8,
+      "title": "Total mesures reçues",
+      "type": "stat",
+      "gridPos": { "x": 20, "y": 8, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  NOW() AS \"time\",\n  COUNT(*) AS \"Total mesures\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 9,
+      "title": "Batterie (V) — historique",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 7 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "volt",
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "yellow", "value": 3.5 },
+              { "color": "green",  "value": 3.8 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  m.ts AS \"time\",\n  m.battery_v AS \"Batterie (V)\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1\n  AND m.ts BETWEEN $__timeFrom() AND $__timeTo()\n  AND m.battery_v IS NOT NULL\nORDER BY m.ts ASC",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 10,
+      "title": "Activité sonore — historique",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 7 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 1, "fillOpacity": 20, "drawStyle": "bars" },
+          "min": 0,
+          "max": 100
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  m.ts AS \"time\",\n  m.sound_level AS \"Niveau sonore\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1\n  AND m.ts BETWEEN $__timeFrom() AND $__timeTo()\n  AND m.sound_level IS NOT NULL\nORDER BY m.ts ASC",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 11,
+      "title": "Événements porte ouverte",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 19, "w": 12, "h": 6 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 0, "fillOpacity": 80, "drawStyle": "bars" },
+          "min": 0,
+          "max": 1,
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "Fermée" }, "1": { "text": "Ouverte" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  m.ts AS \"time\",\n  CASE WHEN m.door_open THEN 1 ELSE 0 END AS \"Porte ouverte\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1\n  AND m.ts BETWEEN $__timeFrom() AND $__timeTo()\nORDER BY m.ts ASC",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 12,
+      "title": "RSSI & SNR — qualité signal LoRa",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 19, "w": 12, "h": 6 },
+      "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 1, "fillOpacity": 5 }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "RSSI (dBm)" }, "properties": [{ "id": "unit", "value": "dBm" }] },
+          { "matcher": { "id": "byName", "options": "SNR (dB)"  }, "properties": [{ "id": "unit", "value": "dB"  }, { "id": "custom.axisPlacement", "value": "right" }] }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "ibee_postgres" },
+          "rawSql": "SELECT\n  m.ts AS \"time\",\n  m.rssi AS \"RSSI (dBm)\",\n  m.snr  AS \"SNR (dB)\"\nFROM measurement m\nJOIN device d ON d.id = m.device_id\nWHERE d.hive_id = 1\n  AND m.ts BETWEEN $__timeFrom() AND $__timeTo()\n  AND m.rssi IS NOT NULL\nORDER BY m.ts ASC",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    }
+
+  ],
+
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "tags": ["ibee", "iot", "lorawan"],
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "IBEE — Ruche connectée",
+  "uid": "ibee-hive-dashboard",
+  "version": 1
+}

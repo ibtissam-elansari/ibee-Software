@@ -37,7 +37,27 @@ services:
     ports:
       - "8081:8080"
 
-  # Optional ChirpStack stack (local dev)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ibee_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ibee2025
+      GF_SERVER_ROOT_URL: http://localhost:3001
+      # Allow Grafana to use TimescaleDB plugin
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      # Auto-provision datasource and dashboard on startup
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── Optional ChirpStack stack (local dev) ──────────────────────────────────
   mqtt:
     image: eclipse-mosquitto:2
     profiles: ["chirpstack"]
@@ -107,4 +127,4 @@ services:
 volumes:
   ibee_db:
   chirpstack_db:
-
+  grafana_data:
