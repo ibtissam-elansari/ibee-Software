@@ -1,3 +1,5 @@
+# routes_hives.py:
+
 from __future__ import annotations
 
 import asyncio
@@ -69,26 +71,26 @@ async def get_hive(hive_id: int, session: AsyncSession = Depends(get_session)):
     return await _get_hive_or_404(hive_id, session)
 
 
-@router.patch("/hives/{hive_id}", response_model=HiveOut)
-async def update_hive(
-    hive_id: int,
-    payload: HiveUpdate,
-    session: AsyncSession = Depends(get_session),
-):
-    hive = await _get_hive_or_404(hive_id, session)
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(hive, field, value)
-    session.add(hive)
-    await session.commit()
-    await session.refresh(hive)
-    return hive
+# @router.patch("/hives/{hive_id}", response_model=HiveOut)
+# async def update_hive(
+#     hive_id: int,
+#     payload: HiveUpdate,
+#     session: AsyncSession = Depends(get_session),
+# ):
+#     hive = await _get_hive_or_404(hive_id, session)
+#     for field, value in payload.model_dump(exclude_unset=True).items():
+#         setattr(hive, field, value)
+#     session.add(hive)
+#     await session.commit()
+#     await session.refresh(hive)
+#     return hive
 
 
-@router.delete("/hives/{hive_id}", status_code=204)
-async def delete_hive(hive_id: int, session: AsyncSession = Depends(get_session)):
-    hive = await _get_hive_or_404(hive_id, session)
-    await session.delete(hive)
-    await session.commit()
+# @router.delete("/hives/{hive_id}", status_code=204)
+# async def delete_hive(hive_id: int, session: AsyncSession = Depends(get_session)):
+#     hive = await _get_hive_or_404(hive_id, session)
+#     await session.delete(hive)
+#     await session.commit()
 
 
 # ── HIVE MEASUREMENTS ────────────────────────────────────────────────────────
