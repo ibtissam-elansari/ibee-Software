@@ -10,7 +10,7 @@ from app.api.routes_hives    import router as hives_router
 from app.api.routes_webhooks import router as webhooks_router
 from app.core.settings       import settings
 from app.db.engine           import create_db_and_tables
-
+from app.api.routes_auth import router as auth_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -42,6 +42,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
 app.include_router(hives_router,    prefix="/api",      tags=["api"])
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 
 @app.get("/", tags=["root"])
