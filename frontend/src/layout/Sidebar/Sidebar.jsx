@@ -11,7 +11,7 @@ const Sidebar = () => {
       aria-label="Navigation principale"
     >
       {/* ── Logo ── */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-base-200">
+      <div className="flex items-center gap-3 px-5 py-10 border-b border-base-200">
         <div className="w-9 h-9 rounded-lg bg-[#F5A623] flex items-center justify-center flex-shrink-0">
           {/* Honeycomb/bee icon — swap with your actual SVG asset */}
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">

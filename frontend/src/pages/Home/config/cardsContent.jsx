@@ -1,0 +1,55 @@
+const honeyIcon = (<svg width="43" height="43" viewBox="0 0 43 43" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="42.6122" height="42.6122" rx="4" fill="#EAB308" fill-opacity="0.1"/>
+                <path d="M11.5212 21.3061L14.0225 16.9719H19.0279L21.5297 21.3061L19.0273 25.6403H14.022L11.5212 21.3061ZM21.0823 26.826L23.5831 22.4918H28.5884L31.0908 26.826L28.5884 31.1602H23.5831L21.0823 26.826ZM21.0823 15.7863L23.5826 11.4521H28.5879L31.0903 15.7863L28.5879 20.1204H23.5826L21.0823 15.7863Z" fill="#E9A929"/>
+              </svg>)
+
+const stateIcon = (<svg width="43" height="43" viewBox="0 0 43 43" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="42.6122" height="42.6122" rx="4" fill="#2F9D4A" fill-opacity="0.1"/>
+              <g clip-path="url(#clip0_72_124)">
+                <path d="M30.2834 17.7403C29.8927 17.29 29.4097 16.9289 28.8672 16.6814C28.3248 16.434 27.7355 16.306 27.1393 16.3061H23.8151L24.0951 14.6053C24.1942 14.0064 24.0746 13.3917 23.7583 12.8736C23.442 12.3554 22.9499 11.9682 22.3719 11.7826C21.7939 11.597 21.1684 11.6254 20.6096 11.8625C20.0507 12.0997 19.5957 12.5298 19.3276 13.0745L17.9726 15.8203V28.8061H26.5559C27.5588 28.802 28.5269 28.4381 29.2841 27.7804C30.0413 27.1228 30.5372 26.2152 30.6818 25.2228L31.2693 21.0561C31.3523 20.4651 31.3073 19.8631 31.1372 19.2909C30.9671 18.7188 30.6759 18.19 30.2834 17.7403Z" fill="#2F9D4A"/>
+                <path d="M11.306 20.4729V24.6395C11.3073 25.7442 11.7467 26.8032 12.5278 27.5844C13.3089 28.3655 14.368 28.8049 15.4726 28.8062H16.306V16.3062H15.4726C14.368 16.3075 13.3089 16.7469 12.5278 17.5281C11.7467 18.3092 11.3073 19.3682 11.306 20.4729Z" fill="#2F9D4A"/>
+              </g>
+              <defs>
+                <clipPath id="clip0_72_124">
+                  <rect width="20" height="20" fill="white" transform="translate(11.306 11.3061)"/>
+                </clipPath>
+              </defs>
+            </svg>)
+
+const securityIcon = (<svg width="43" height="43" viewBox="0 0 43 43" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect width="42.6122" height="42.6122" rx="4.26122" fill="#1D5FCA" fill-opacity="0.1"/>
+                      <g clip-path="url(#clip0_72_177)">
+                        <path d="M14.3059 24.3061C14.3059 20.4401 17.4399 17.3061 21.3059 17.3061C25.1719 17.3061 28.3059 20.4401 28.3059 24.3061C28.3059 28.1721 25.1719 31.3061 21.3059 31.3061C17.4399 31.3061 14.3059 28.1721 14.3059 24.3061Z" fill="#1D5FCA" stroke="#1D5FCA" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M25.8059 18.8061V15.8061C25.8059 13.3209 23.7912 11.3061 21.3059 11.3061C18.8206 11.3061 16.8059 13.3209 16.8059 15.8061V18.8061" stroke="#1D5FCA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M21.3059 25.3061V23.3061" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </g>
+                      <defs>
+                        <clipPath id="clip0_72_177">
+                          <rect width="25.5673" height="25.5673" fill="white" transform="translate(8.52234 8.52246)"/>
+                        </clipPath>
+                      </defs>
+                    </svg>)
+
+
+const cardsContent = [
+  {
+    state: 'Ruches actives',
+    title: '5/5',
+    subTitle: 'Toutes les Ruches sont actives',
+    icon: honeyIcon,
+  },
+  {
+    state: 'Normale',
+    title: 'Aucun problème',
+    subTitle: 'Toutes les Ruches sont parfaites',
+    icon: stateIcon,
+  },
+  {
+    state: 'Securité',
+    title: '5/5',
+    subTitle: 'Toutes les ruches sont fermées',
+    icon: securityIcon,
+  }
+]
+
+export default cardsContent;

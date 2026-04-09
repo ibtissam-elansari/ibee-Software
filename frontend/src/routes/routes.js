@@ -1,19 +1,11 @@
-import DashboardLayout from "../layout/DashboardLayout";
-import { GestionPage, HomePage, SettingsPage } from "../pages";
+import { GestionPage, HomePage, SettingsPage, AuthPage } from "../pages";
 
-const routes = [
-  {
-    path: '/',
-    element: HomePage
-  },
-  {
-    path: '/gestion',
-    element: GestionPage
-  },
-  {
-    path: '/parametres',
-    element: SettingsPage
-  }
-]
+export const publicRoutes = [
+  { path: '/login', element: AuthPage },
+];
 
-export default routes;
+export const protectedRoutes = [
+  { path: '/',  element: HomePage },
+  { path: '/gestion', element: GestionPage },
+  { path: '/parametres', element: SettingsPage}
+];
