@@ -82,4 +82,3 @@ def decode_payload_v1_from_base64(data_b64: str) -> PayloadV1:
         gps_lng=gps_lng,
         battery_v=battery_v,
     )
-
