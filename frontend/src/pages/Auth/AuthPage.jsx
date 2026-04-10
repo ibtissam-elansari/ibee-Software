@@ -7,7 +7,7 @@ import useAuthStore from '../../store/useAuthStore';
 const AuthPage = () => {
   const navigate = useNavigate();
   const setAuth = useAuthStore(s => s.setAuth)
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -22,7 +22,7 @@ const AuthPage = () => {
     try {
       const data = await login({ email, password })
       setAuth(data)                           // stores token + role + email + user_id
-      navigate(data.role === 'superuser' ? '/gestion' : '/')
+      navigate('/')
     } catch (err) {
       setError(err.response?.data?.detail || 'Email ou mot de passe invalide')
     } finally {
