@@ -5,16 +5,19 @@ const menuItems = [
     href  : '/',
     roles : ['user', 'admin', 'superuser'],
   },
-
   { type: 'divider' },
-
   {
     label : 'Gestion',
     icon  : 'FolderCog',
     href  : '/gestion',
-    roles : ['superuser'],         
+    roles : ['superuser'],
   },
-
+  {
+    label : 'Utilisateurs',
+    icon  : 'Users',
+    href  : '/utilisateurs',
+    roles : ['admin', 'superuser'],    // both can manage users
+  },
   {
     label : 'Paramètres',
     icon  : 'Settings',
