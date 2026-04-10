@@ -1,15 +1,14 @@
+# /security.py
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 
-SECRET_KEY = "CHANGE_THIS_SECRET"  # ⚠️ change in production
+SECRET_KEY = "CHANGE_THIS_SECRET"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-
-# ── PASSWORD ──────────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -18,8 +17,6 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed: str) -> bool:
     return pwd_context.verify(password, hashed)
 
-
-# ── JWT ───────────────────────────────────────────────────────
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
@@ -32,4 +29,4 @@ def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        return None
+        raise Exception("Invalid token")
