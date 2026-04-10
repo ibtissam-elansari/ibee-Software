@@ -6,8 +6,8 @@ import useAuthStore from '../../store/useAuthStore';
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const setToken = useAuthStore(s => s.setToken);
-
+  const setAuth = useAuthStore(s => s.setAuth)
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -20,17 +20,15 @@ const AuthPage = () => {
     setLoading(true)
 
     try {
-      const data = await login({ email, password });
-
-      setToken(data.access_token);
-      navigate('/');
-
-    } catch {
-      setError('Invalid email or password');
+      const data = await login({ email, password })
+      setAuth(data)                           // stores token + role + email + user_id
+      navigate(data.role === 'superuser' ? '/gestion' : '/')
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Email ou mot de passe invalide')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="flex items-center justify-center h-screen bg-base-200">
