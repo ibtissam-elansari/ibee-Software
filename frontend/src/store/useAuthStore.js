@@ -2,37 +2,27 @@
 import { create } from 'zustand';
 
 const decodeToken = (token) => {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload;
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(atob(token.split('.')[1])) }
+  catch { return null }
 };
 
 const storedToken = localStorage.getItem('access_token');
-const decoded = storedToken ? decodeToken(storedToken) : null;
+const decoded     = storedToken ? decodeToken(storedToken) : null;
 
 const useAuthStore = create((set) => ({
-  token: storedToken || null,
-  user : decoded?.sub || null,
-  role : decoded?.role || null,
+  token   : storedToken || null,
+  role    : decoded?.role || null,
+  email   : decoded?.sub  || null,
+  userId  : null,
 
-  setToken: (token) => {
-    localStorage.setItem('access_token', token);
-
-    const decoded = decodeToken(token);
-
-    set({
-      token,
-      user: decoded?.sub,
-      role: decoded?.role,
-    });
+  setAuth : ({ access_token, role, email, user_id }) => {
+    localStorage.setItem('access_token', access_token);
+    set({ token: access_token, role, email, userId: user_id });
   },
 
-  logout: () => {
+  logout  : () => {
     localStorage.removeItem('access_token');
-    set({ token: null, user: null, role: null });
+    set({ token: null, role: null, email: null, userId: null });
   },
 }));
 
