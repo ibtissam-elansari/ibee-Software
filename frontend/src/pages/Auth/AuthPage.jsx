@@ -14,9 +14,10 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+    e.preventDefault()
+    e.stopPropagation()
+    setError(null)
+    setLoading(true)
 
     try {
       const data = await login({ email, password });
@@ -57,8 +58,12 @@ const AuthPage = () => {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button className="btn btn-primary w-full" disabled={loading}>
-          {loading ? 'Loading...' : 'Login'}
+        <button
+          type="submit"
+          className="btn btn-primary w-full"
+          disabled={loading}
+        >
+          {loading ? 'Chargement...' : 'Se connecter'}
         </button>
       </form>
     </div>
