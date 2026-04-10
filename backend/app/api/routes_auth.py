@@ -42,9 +42,9 @@ async def register(
         raise HTTPException(status_code=400, detail="Email already registered")
 
     user = User(
-        email=payload.email,
-        hashed_password=hash_password(payload.password),
-        role=payload.role,
+        email           = payload.email,
+        hashed_password = hash_password(payload.password),
+        role            = UserRole.USER,   # hardcoded, ignore payload.role
     )
 
     session.add(user)
