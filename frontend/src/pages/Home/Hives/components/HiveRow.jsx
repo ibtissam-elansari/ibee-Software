@@ -1,7 +1,7 @@
 import React from 'react';
-import { useHiveLatest } from '../../../hooks/useHives';
+import { useHiveLatest } from '../../../../hooks/useHives'
 import BatteryCell  from './BatteryCell';
-import SignalCell   from './SignalCell';
+import SignalCell from './SignalCell';
 import SecurityCell from './SecurityCell';
 
 const colorFor = (value, warnThreshold, critThreshold) => {
