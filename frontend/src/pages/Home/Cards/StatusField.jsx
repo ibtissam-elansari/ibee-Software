@@ -1,3 +1,5 @@
+import React from 'react'
+import StatusCard from './components/StatusCard'
 import { useDashboardStats } from '../../../hooks/useDashboardStats'
 import { ChevronRight } from 'lucide-react'
 
@@ -40,53 +42,66 @@ const SecurityIcon = () => (
   </svg>
 )
 
-const {
-  isLoading,
-  totalHives,
-  hasUrgent,
-  alertCount,
-  secureCount,
-  doorOpenCount,
-  totalWithData,
-} = useDashboardStats()
 
-const cards = [
-  {
-    label      : 'Etat',
-    state      : 'Ruches actives',
-    title      : isLoading ? null : `${totalHives}/${totalHives}`,
-    subTitle   : isLoading ? '...' : `${totalHives} ruche${totalHives > 1 ? 's' : ''} active${totalHives > 1 ? 's' : ''}`,
-    icon       : <HoneyIcon />,
+const StatusField = () => {
+  const {
     isLoading,
-  },
-  {
-    label      : 'Etat',
-    state      : hasUrgent ? 'Urgent' : 'Normale',
-    stateColor : hasUrgent ? 'text-red-500' : 'text-green-600',
-    title      : hasUrgent ? `${alertCount} alerte${alertCount > 1 ? 's' : ''}` : 'Aucun problème',
-    subTitle   : hasUrgent
-      ? `${alertCount} ruche${alertCount > 1 ? 's' : ''} nécessite${alertCount > 1 ? 'nt' : ''} attention`
-      : 'Toutes les ruches sont parfaites',
-    icon       : <StateIcon urgent={hasUrgent} />,
-    urgent     : hasUrgent,
-    isLoading,
-  },
-  {
-    label      : 'Etat',
-    state      : 'Sécurité',
-    stateColor : 'text-blue-600',
-    title      : isLoading ? null : `${secureCount}/${totalWithData || totalHives}`,
-    subTitle   : doorOpenCount > 0
-      ? `${doorOpenCount} ruche${doorOpenCount > 1 ? 's' : ''} ouverte${doorOpenCount > 1 ? 's' : ''}`
-      : 'Toutes les ruches sont fermées',
-    icon       : <SecurityIcon />,
-    extra      : (
-      <button className="p-1 rounded-full hover:bg-base-200 transition-colors">
-        <ChevronRight className="w-4 h-4 text-base-content/40" />
-      </button>
-    ),
-    isLoading,
-  },
-]
+    totalHives,
+    hasUrgent,
+    alertCount,
+    secureCount,
+    doorOpenCount,
+    totalWithData,
+  } = useDashboardStats()
 
-export default cards;
+  const cards = [
+    {
+      label      : 'Etat',
+      state      : 'Ruches actives',
+      title      : isLoading ? null : `${totalHives}/${totalHives}`,
+      subTitle   : isLoading ? '...' : `${totalHives} ruche${totalHives > 1 ? 's' : ''} active${totalHives > 1 ? 's' : ''}`,
+      icon       : <HoneyIcon />,
+      isLoading,
+    },
+    {
+      label      : 'Etat',
+      state      : hasUrgent ? 'Urgent' : 'Normale',
+      stateColor : hasUrgent ? 'text-red-500' : 'text-green-600',
+      title      : hasUrgent ? `${alertCount} alerte${alertCount > 1 ? 's' : ''}` : 'Aucun problème',
+      subTitle   : hasUrgent
+        ? `${alertCount} ruche${alertCount > 1 ? 's' : ''} nécessite${alertCount > 1 ? 'nt' : ''} attention`
+        : 'Toutes les ruches sont parfaites',
+      icon       : <StateIcon urgent={hasUrgent} />,
+      urgent     : hasUrgent,
+      isLoading,
+    },
+    {
+      label      : 'Etat',
+      state      : 'Sécurité',
+      stateColor : 'text-blue-600',
+      title      : isLoading ? null : `${secureCount}/${totalWithData || totalHives}`,
+      subTitle   : doorOpenCount > 0
+        ? `${doorOpenCount} ruche${doorOpenCount > 1 ? 's' : ''} ouverte${doorOpenCount > 1 ? 's' : ''}`
+        : 'Toutes les ruches sont fermées',
+      icon       : <SecurityIcon />,
+      extra      : (
+        <button className="p-1 rounded-full hover:bg-base-200 transition-colors">
+          <ChevronRight className="w-4 h-4 text-base-content/40" />
+        </button>
+      ),
+      isLoading,
+    },
+  ]
+
+  return (
+    <div className="flex flex-col gap-y-4 p-4 bg-base-100 rounded-2xl overflow-hidden w-full border border-base-200">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {cards.map((card, i) => (
+          <StatusCard key={i} card={card} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default StatusField
