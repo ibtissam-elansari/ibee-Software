@@ -1,108 +1,75 @@
 import React from 'react';
-import { useHiveLatest } from '../../../../hooks/useHives'
+import { useHiveRow } from '../hooks/useHiveRow';
 import BatteryCell  from './BatteryCell';
-import SignalCell from './SignalCell';
+import SignalCell   from './SignalCell';
 import SecurityCell from './SecurityCell';
 
-const colorFor = (value, warnThreshold, critThreshold) => {
-  if (value == null) return '';
-  if (value > critThreshold)  return 'text-red-500 font-semibold';
-  if (value > warnThreshold) return 'text-amber-500 font-semibold';
-  return 'text-base-content';
-};
-
-const statusLabel = (temp, humidity, doorOpen) => {
-  if (temp > 40 || humidity > 80 || doorOpen) return 'Urgente';
-  if (temp > 35 || humidity > 70) return 'Attention';
-  return 'Normale';
-};
-
+/**
+ * HiveRow — purely presentational.
+ *
+ * Zero business logic. All values come pre-derived from useHiveRow.
+ * Adding a new column = add a return value in useHiveRow, add a <td> here.
+ */
 const HiveRow = ({ hive, onClick }) => {
-  const { data: latest, isLoading } = useHiveLatest(hive.id);
+  const { isLoading, display } = useHiveRow(hive.id);
 
-  const temp      = latest?.temperature_c  ?? null;
-  const humidity  = latest?.humidity_pct   ?? null;
-  const sound     = latest?.sound_level    ?? null;
-  const doorOpen  = latest?.door_open      ?? false;
-  const rssi      = latest?.rssi           ?? null;
-  const batteryV  = latest?.battery_v      ?? null;
+  const cell = 'px-4 py-4 text-sm';
 
-  // Battery % — assume 4.2V = 100%, 3.3V = 0%
-  const batteryPct = batteryV != null
-    ? Math.min(100, Math.max(0, Math.round(((batteryV - 3.3) / 0.9) * 100)))
-    : null;
-
-  // Sound: display as Hz (scale 0-100 → 0-200Hz)
-  const soundHz = sound != null ? `${sound * 2}Hz` : '—';
-
-  const status  = temp != null ? statusLabel(temp, humidity, doorOpen) : 'Inconnue';
-  const urgent  = status === 'Urgente';
-
-  const statusStyle = urgent
-    ? 'text-red-500 font-semibold'
-    : status === 'Attention'
-    ? 'text-amber-500 font-semibold'
-    : 'text-base-content';
-
-  const rowStyle = urgent
-    ? 'bg-red-50 border-l-2 border-red-400'
-    : 'border-l-2 border-transparent hover:bg-base-200/40';
+  if (isLoading) {
+    return (
+      <tr className="border-b border-gray-100">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <td key={i} className="px-4 py-4">
+            <div className="h-4 w-14 bg-gray-100 rounded animate-pulse" />
+          </td>
+        ))}
+      </tr>
+    );
+  }
 
   return (
     <tr
-      className={`border-b border-base-200 transition-colors cursor-pointer ${rowStyle}`}
+      className={`${display.rowBg} transition-colors cursor-pointer`}
       onClick={() => onClick?.(hive)}
     >
-      {/* RUCHE ID */}
-      <td className="px-4 py-4 text-sm font-bold text-base-content tracking-wide">
-        {hive.name?.toUpperCase() ?? hive.dev_eui?.slice(0, 8).toUpperCase()}
+      {/* RUCHE ID — carries the left accent bar */}
+      <td className={`${cell} ${display.leftAccent} font-bold text-gray-900 tracking-wide`}>
+        {(hive.name ?? hive.dev_eui ?? '—').toUpperCase()}
       </td>
 
       {/* ETAT */}
-      <td className={`px-4 py-4 text-sm ${statusStyle}`}>
-        {isLoading ? '…' : status}
+      <td className={`${cell} ${display.statusColor}`}>
+        {display.status}
       </td>
 
       {/* BATTERIE */}
-      <td className="px-4 py-4">
-        {isLoading ? (
-          <span className="text-base-300 text-sm">…</span>
-        ) : (
-          <BatteryCell value={batteryPct} />
-        )}
+      <td className={cell}>
+        <BatteryCell value={display.batteryPct} />
       </td>
 
       {/* SONORE */}
-      <td className={`px-4 py-4 text-sm ${colorFor(sound, 60, 80)}`}>
-        {isLoading ? '…' : soundHz}
+      <td className={`${cell} ${display.soundColor}`}>
+        {display.soundHz}
       </td>
 
       {/* HUMIDITÉ */}
-      <td className={`px-4 py-4 text-sm ${colorFor(humidity, 60, 75)}`}>
-        {isLoading ? '…' : humidity != null ? `${Math.round(humidity)}%` : '—'}
+      <td className={`${cell} ${display.humidityColor}`}>
+        {display.humidity != null ? `${Math.round(display.humidity)}%` : '—'}
       </td>
 
       {/* TEMPÉRATURE */}
-      <td className={`px-4 py-4 text-sm ${colorFor(temp, 35, 40)}`}>
-        {isLoading ? '…' : temp != null ? `${Math.round(temp)}°C` : '—'}
+      <td className={`${cell} ${display.tempColor}`}>
+        {display.temp != null ? `${Math.round(display.temp)}°C` : '—'}
       </td>
 
       {/* SIGNAL */}
-      <td className="px-4 py-4">
-        {isLoading ? (
-          <span className="text-base-300 text-sm">…</span>
-        ) : (
-          <SignalCell rssi={rssi} urgent={urgent} />
-        )}
+      <td className={cell}>
+        <SignalCell rssi={display.rssi} urgent={display.urgent} />
       </td>
 
-      {/* SECURITÉ */}
-      <td className="px-4 py-4">
-        {isLoading ? (
-          <span className="text-base-300 text-sm">…</span>
-        ) : (
-          <SecurityCell doorOpen={doorOpen} />
-        )}
+      {/* SÉCURITÉ */}
+      <td className={cell}>
+        <SecurityCell doorOpen={display.doorOpen} />
       </td>
     </tr>
   );
