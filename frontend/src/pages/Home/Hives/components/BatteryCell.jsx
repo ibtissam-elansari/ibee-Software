@@ -7,14 +7,14 @@ const BatteryCell = ({ value }) => {
 
   const style =
     pct >= 40
-      ? { bg: 'bg-green-100 border-green-400', text: 'text-green-700', fill: '#16a34a' }
+      ? {  text: 'text-green-700', fill: '#16a34a' }
       : pct >= 20
-      ? { bg: 'bg-orange-100 border-orange-400', text: 'text-orange-600', fill: '#ea580c' }
-      : { bg: 'bg-red-100 border-red-400',    text: 'text-red-600',    fill: '#dc2626' };
+      ? { text: 'text-orange-600', fill: '#ea580c' }
+      : {    text: 'text-red-600',    fill: '#dc2626' };
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-xs font-semibold ${style.bg} ${style.text}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold ${style.bg} ${style.text}`}
     >
       {/* Battery SVG icon */}
       <svg width="16" height="10" viewBox="0 0 16 10" fill="none">
