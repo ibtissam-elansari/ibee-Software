@@ -3,6 +3,7 @@ import { Search, List, LayoutGrid, Plus } from 'lucide-react';
 import { useHivesField } from './hooks/useHivesField';
 import HiveRow from './components/HiveRow';
 import HiveModal from './components/HiveModal'
+import HiveGrid from './components/HiveGrid';
 
 const COLUMNS = [
   { key: 'name',        label: 'Ruche ID'    },
@@ -22,7 +23,7 @@ const PaginationBtn = ({ onClick, disabled, active, children }) => (
     onClick={onClick}
     disabled={disabled}
     className={`
-      w-[30px] h-[30px] flex items-center justify-center rounded-lg
+      flex items-center justify-center rounded-xl py-1 px-2
       border text-[13px] transition-colors
       ${active
         ? 'bg-[#F59E0B] border-[#F59E0B] text-white font-medium'
@@ -37,9 +38,8 @@ const PaginationBtn = ({ onClick, disabled, active, children }) => (
 
 const HivesField = () => {
   const {
-    paginated,      // ← replaces `filtered` in the table body
-    filtered,       // still useful for total count
-    // pagination
+    paginated,      
+    filtered,      
     page,
     totalPages,
     setPage,
@@ -131,6 +131,7 @@ const HivesField = () => {
           </button> */}
 
         {/* Table */}
+        {view === 'list' ? (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px]" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
             <thead>
@@ -173,44 +174,24 @@ const HivesField = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </div> ) : (
+          <HiveGrid hives={paginated} onHiveClick={openHiveModal} />
+        )}
         
         {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-1">
-
-            {/* Count */}
-            <span className="text-xs text-gray-400">
-              {(page - 1) * 10 + 1}–{Math.min(page * 10, totalCount)} sur {totalCount} ruches
-            </span>
+          <div className="w-full mt-2">
 
             {/* Buttons */}
-            <div className="flex items-center gap-1">
+            <div className="flex justify-between gap-1 px-6">
 
               <PaginationBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                ‹
+                précédent
               </PaginationBtn>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
-                .reduce((acc, n, idx, arr) => {
-                  if (idx > 0 && n - arr[idx - 1] > 1) acc.push('…');
-                  acc.push(n);
-                  return acc;
-                }, [])
-                .map((n, i) =>
-                  n === '…' ? (
-                    <span key={`gap-${i}`} className="w-[30px] h-[30px] flex items-center justify-center text-xs text-gray-300">
-                      …
-                    </span>
-                  ) : (
-                    <PaginationBtn key={n} onClick={() => setPage(n)} active={page === n}>
-                      {n}
-                    </PaginationBtn>
-                  )
-                )}
+              <p className='text-xs font-light'>page {page} of {totalPages}</p>
 
               <PaginationBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-                ›
+                suivant
               </PaginationBtn>
 
             </div>
