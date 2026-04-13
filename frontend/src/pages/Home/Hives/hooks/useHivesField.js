@@ -1,23 +1,18 @@
 import { useState, useMemo } from 'react';
 import { useHiveList } from '../../../../hooks/useHives';
-import { deriveStatus } from '../lib/hiveUtils';
 
-/**
- * useHivesField — manages everything HivesField needs.
- *
- * Extracted from HivesField.jsx so the component is pure rendering.
- * Owns: data fetching, search, filter, modal state, status bar text.
- */
+const PAGE_SIZE = 8;
+
 export function useHivesField() {
   const { data: hives = [], isLoading, isError, dataUpdatedAt } = useHiveList();
 
-  const [search,        setSearch]        = useState('');
-  const [filter,        setFilter]        = useState('Toutes');
-  const [view,          setView]          = useState('list');
-  const [selectedHive,  setSelectedHive]  = useState(null);
-  const [addModalOpen,  setAddModalOpen]  = useState(false);
+  const [search,       setSearch]       = useState('');
+  const [filter,       setFilter]       = useState('Toutes');
+  const [view,         setView]         = useState('list');
+  const [selectedHive, setSelectedHive] = useState(null);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [page,         setPage]         = useState(1);
 
-  // Client-side search
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return hives.filter(h =>
@@ -25,26 +20,43 @@ export function useHivesField() {
     );
   }, [hives, search]);
 
-  // Last update display string
+  // Reset to page 1 whenever the filtered set changes
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage   = Math.min(page, totalPages);
+
+  const paginated = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, safePage]);
+
   const lastUpdateLabel = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString('fr-FR', {
         hour: '2-digit', minute: '2-digit',
       })
     : null;
 
+  // Reset page when search/filter changes
+  const handleSetSearch = (v) => { setSearch(v); setPage(1); };
+  const handleSetFilter = (v) => { setFilter(v); setPage(1); };
+
   return {
-    // Data
     hives,
     filtered,
+    paginated,          // ← use this in the table instead of `filtered`
     isLoading,
     isError,
 
-    // UI state
-    search,       setSearch,
-    filter,       setFilter,
+    search,       setSearch: handleSetSearch,
+    filter,       setFilter: handleSetFilter,
     view,         setView,
 
-    // Modal state
+    // Pagination
+    page: safePage,
+    totalPages,
+    setPage,
+    pageSize: PAGE_SIZE,
+    totalCount: filtered.length,
+
     selectedHive,
     openHiveModal  : setSelectedHive,
     closeHiveModal : () => setSelectedHive(null),
@@ -52,7 +64,6 @@ export function useHivesField() {
     openAddModal   : () => setAddModalOpen(true),
     closeAddModal  : () => setAddModalOpen(false),
 
-    // Derived display
     lastUpdateLabel,
   };
 }

@@ -17,15 +17,33 @@ const COLUMNS = [
 
 const FILTER_OPTIONS = ['Toutes', 'Urgente', 'Attention', 'Normale'];
 
-/**
- * HivesField — purely presentational.
- *
- * Zero business logic. All state and derivations live in useHivesField.
- * To change behaviour, edit the hook. To change appearance, edit this file.
- */
+const PaginationBtn = ({ onClick, disabled, active, children }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={`
+      w-[30px] h-[30px] flex items-center justify-center rounded-lg
+      border text-[13px] transition-colors
+      ${active
+        ? 'bg-[#F59E0B] border-[#F59E0B] text-white font-medium'
+        : 'bg-white border-gray-200 text-gray-500 hover:bg-amber-50 hover:border-[#F59E0B] hover:text-amber-800'
+      }
+      disabled:opacity-35 disabled:cursor-not-allowed disabled:pointer-events-none
+    `}
+  >
+    {children}
+  </button>
+);
+
 const HivesField = () => {
   const {
-    filtered,
+    paginated,      // ← replaces `filtered` in the table body
+    filtered,       // still useful for total count
+    // pagination
+    page,
+    totalPages,
+    setPage,
+    totalCount,
     isLoading,
     isError,
     search,        setSearch,
@@ -149,16 +167,58 @@ const HivesField = () => {
                   </td>
                 </tr>
               ) : (
-                filtered.map(hive => (
+                paginated.map(hive => (
                   <HiveRow key={hive.id} hive={hive} onClick={openHiveModal} />
                 ))
               )}
             </tbody>
           </table>
         </div>
+        
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-1">
+
+            {/* Count */}
+            <span className="text-xs text-gray-400">
+              {(page - 1) * 10 + 1}–{Math.min(page * 10, totalCount)} sur {totalCount} ruches
+            </span>
+
+            {/* Buttons */}
+            <div className="flex items-center gap-1">
+
+              <PaginationBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                ‹
+              </PaginationBtn>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+                .reduce((acc, n, idx, arr) => {
+                  if (idx > 0 && n - arr[idx - 1] > 1) acc.push('…');
+                  acc.push(n);
+                  return acc;
+                }, [])
+                .map((n, i) =>
+                  n === '…' ? (
+                    <span key={`gap-${i}`} className="w-[30px] h-[30px] flex items-center justify-center text-xs text-gray-300">
+                      …
+                    </span>
+                  ) : (
+                    <PaginationBtn key={n} onClick={() => setPage(n)} active={page === n}>
+                      {n}
+                    </PaginationBtn>
+                  )
+                )}
+
+              <PaginationBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                ›
+              </PaginationBtn>
+
+            </div>
+          </div>
+        )}
 
         {/* Status bar */}
-        <div className="flex items-center gap-2 text-xs text-gray-400">
+        <div className="flex items-center gap-2 text-xs text-gray-400 fixed bottom-8">
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
           <span>
             Surveillance en direct

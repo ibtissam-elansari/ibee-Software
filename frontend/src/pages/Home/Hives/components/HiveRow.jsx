@@ -53,22 +53,22 @@ const HiveRow = ({ hive, onClick }) => {
       </td>
 
       {/* HUMIDITÉ */}
-      <td className={`${cell} ${display.humidityColor}`}>
+      <td className={`${cell} ${display.humidityColor} pl-7`}>
         {display.humidity != null ? `${Math.round(display.humidity)}%` : '—'}
       </td>
 
       {/* TEMPÉRATURE */}
-      <td className={`${cell} ${display.tempColor}`}>
+      <td className={`${cell} ${display.tempColor} pl-10`}>
         {display.temp != null ? `${Math.round(display.temp)}°C` : '—'}
       </td>
 
       {/* SIGNAL */}
-      <td className={cell}>
+      <td className={`${cell} pl-6`}>
         <SignalCell rssi={display.rssi} urgent={display.urgent} />
       </td>
 
       {/* SÉCURITÉ */}
-      <td className={cell}>
+      <td className={`${cell} pl-10`}>
         <SecurityCell doorOpen={display.doorOpen} />
       </td>
     </tr>
