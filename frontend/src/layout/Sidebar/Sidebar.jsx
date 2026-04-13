@@ -21,10 +21,9 @@ const Sidebar = () => {
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-base-200">
         <div className="w-9 h-9 rounded-lg bg-[#F5A623] flex items-center justify-center flex-shrink-0">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M10 2L14.5 4.75V10.25L10 13L5.5 10.25V4.75L10 2Z"
-              fill="white" stroke="white" strokeWidth="0.5" />
-            <circle cx="10" cy="7.5" r="2" fill="#F5A623" />
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="4" fill="#F59E0B"/>
+            <path d="M23.5 19.3333V12.6667C23.4994 12.0718 23.1818 11.5224 22.6667 11.225L16.8333 7.89166C16.3177 7.59394 15.6823 7.59394 15.1667 7.89166L9.33333 11.225C8.81819 11.5224 8.50061 12.0718 8.5 12.6667V19.3333C8.50061 19.9282 8.81819 20.4776 9.33333 20.775L15.1667 24.1083C15.6823 24.4061 16.3177 24.4061 16.8333 24.1083L22.6667 20.775C23.1818 20.4776 23.4994 19.9282 23.5 19.3333" stroke="white" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
         <span className="text-lg font-bold tracking-wide text-base-content">IBEE</span>

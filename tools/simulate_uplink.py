@@ -19,6 +19,8 @@ DEVICES = [
     "70b3d57ed0064a17",
     "70b3d57ed0064a18",
     "70b3d57ed0064a19",
+    "70b3d57ed0064a20",
+    "70b3d57ed0064a21",
 ]
 
 # Fixed GPS positions per hive
@@ -31,6 +33,8 @@ DEVICE_LOCATIONS = {
     "70b3d57ed0064a17": (35.6900, -0.6415),
     "70b3d57ed0064a18": (35.6920, -0.6420),
     "70b3d57ed0064a19": (35.6940, -0.6425),
+    "70b3d57ed0064a20": (35.6960, -0.6430),
+    "70b3d57ed0064a21": (35.6980, -0.6435),
 }
 
 # Each hive has its own step counter (battery decay, etc.)
