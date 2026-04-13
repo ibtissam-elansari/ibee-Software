@@ -91,7 +91,7 @@ const HiveModal = ({ hive, onClose }) => {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/25 backdrop-blur-sm"
+        className="fixed inset-0 z-10 bg-black/25 backdrop-blur-sm"
         onClick={onClose}
       />
 

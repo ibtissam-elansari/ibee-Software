@@ -23,6 +23,13 @@ export const deriveStatus = (temp, humidity, sound, doorOpen) => {
   return 'Normale';
 };
 
+export const notifsAlerts = (temp, humidity, sound, doorOpen) => {
+  if (temp == null && humidity == null) return 'Inconnue';
+  if ((temp ?? 0) > 40 || (humidity ?? 0) > 80 || doorOpen) return 'Urgente';
+  if ((temp ?? 0) > 35 || (humidity ?? 0) > 70 || (sound ?? 0) > 80) return 'Attention';
+  return 'Normale';
+};
+
 // ── Color helpers ─────────────────────────────────────────────────────────────
 
 /**

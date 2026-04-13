@@ -133,13 +133,13 @@ const HivesField = () => {
         {/* Table */}
         {view === 'list' ? (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px]" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-            <thead>
+          <table className="w-full min-w-[700px]" style={{ borderCollapse: 'separate', borderSpacing: '0 4px' }}>
+            <thead className="border-b border-gray-200">
               <tr>
                 {COLUMNS.map(col => (
                   <th
                     key={col.key}
-                    className="px-4 py-2.5 text-left border-b border-gray-200
+                    className="px-4 py-2.5 text-left
                                text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400"
                   >
                     {col.label}
