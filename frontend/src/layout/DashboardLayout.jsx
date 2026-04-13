@@ -1,6 +1,7 @@
 import Sidebar from './Sidebar/Sidebar';
 import React from 'react';
 import { Outlet } from 'react-router';
+import Notifications from './Notifications/Notifications';
 
 const DashboardLayout = () => {
   return (
@@ -23,25 +24,10 @@ const DashboardLayout = () => {
         <Outlet />
       </main>
 
-      <aside
-        className={`
-          fixed
-          top-2
-          bottom-2
-          right-2
-          w-80
-          bg-base-100
-          shadow-sm
-          rounded-box
-          overflow-y-auto
-        `}
-      >
-        <div className="p-5">
-          <h2 className="text-base font-semibold">Notifications</h2>
-        </div>
-      </aside>
+      <Notifications/>
     </div>
   );
 };
+
 
 export default DashboardLayout;

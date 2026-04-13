@@ -67,9 +67,9 @@ export function useHiveRow(hiveId) {
       rssi,
       doorOpen,
       urgent,
-      // Row-level styling — derived here, not in JSX
-      rowBg      : urgent ? 'bg-red-50 border-b border-red-100' : 'bg-white border-b border-gray-100 hover:bg-gray-50',
-      leftAccent : urgent ? 'border-l-[3px] border-l-red-400' : 'border-l-[3px] border-l-transparent',
+      rowBg: urgent
+        ? 'bg-red-50 border border-red-300 rounded-xl'
+        : 'border border-transparent hover:bg-gray-50',
     },
   };
 }
