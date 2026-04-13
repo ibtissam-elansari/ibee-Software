@@ -12,7 +12,7 @@ from sqlmodel import select
 from app.api.routes_hives import update_sse_cache
 from app.core.payload_v1 import decode_payload_v1_from_base64
 from app.db.engine import get_session
-from app.models.models import Device, Measurement
+from app.models.models import Device, Measurement, Hive
 
 router = APIRouter()
 
@@ -57,6 +57,26 @@ async def chirpstack_uplink(
 
     # ── Update device status ─────────────────────────────────────────────────
     device              = await _get_or_create_device(session, dev_eui)
+    
+
+    # ── AUTO CREATE + LINK HIVE IF MISSING ─────────────────────────────
+    if device.hive_id is None:
+        hive = Hive(
+            name=f"Ruche-{device.dev_eui[-4:]}",
+            location_name="Auto-created"
+        )
+        session.add(hive)
+        await session.commit()
+        await session.refresh(hive)
+
+        device.hive_id = hive.id
+        session.add(device)
+        await session.commit()
+        await session.refresh(device)
+
+        print(f"🆕 Linked {device.dev_eui} → Hive {hive.id}")
+
+    
     device.status       = "online"
     device.last_seen_at = _utcnow()
     session.add(device)
