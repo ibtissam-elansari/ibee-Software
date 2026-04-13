@@ -29,7 +29,7 @@ const HiveRow = ({ hive, onClick }) => {
 
   return (
     <tr
-      className={`${display.rowBg} transition-colors cursor-pointer`}
+      className={`${display.rowBg} transition-colors cursor-pointer p-20`}
       onClick={() => onClick?.(hive)}
     >
       {/* RUCHE ID — carries the left accent bar */}
