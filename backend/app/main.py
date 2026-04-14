@@ -45,7 +45,7 @@ app.include_router(health_router)
 app.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
 app.include_router(hives_router,    prefix="/api",      tags=["api"])
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
-app.include_router(notifications_router, prefix="/notifs", tags=['notifs'])
+app.include_router(notifications_router, prefix="/api", tags=["notifications"])
 
 
 @app.get("/", tags=["root"])

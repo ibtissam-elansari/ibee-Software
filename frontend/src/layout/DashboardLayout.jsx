@@ -1,12 +1,13 @@
 import Sidebar from './Sidebar/Sidebar';
 import React from 'react';
 import { Outlet } from 'react-router';
-import Notifications from './Notifications/Notifications';
+import Notifications from '../pages/Home/Notifications/Notifications';
 
 const DashboardLayout = () => {
   return (
     <div className="min-h-screen bg-base-200">
       <Sidebar />
+      
       <main
         className={`
           fixed
@@ -24,7 +25,7 @@ const DashboardLayout = () => {
         <Outlet />
       </main>
 
-      <Notifications/>
+      
     </div>
   );
 };
