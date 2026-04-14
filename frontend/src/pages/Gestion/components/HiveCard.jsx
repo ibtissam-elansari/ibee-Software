@@ -63,7 +63,7 @@ const HiveCard = ({ hive, onSettings, onDelete }) => {
             e.stopPropagation();
             onSettings();
           }}
-          className="p-2 rounded-full bg-gray-100 cursor-pointer"
+          className="p-2 rounded-full bg-gray-100 cursor-pointer hover:bg-gray-200"
         >
           <Settings size={16} />
         </button>
@@ -73,7 +73,7 @@ const HiveCard = ({ hive, onSettings, onDelete }) => {
             e.stopPropagation();
             onDelete();
           }}
-          className="p-2 rounded-full bg-red-100"
+          className="p-2 rounded-full bg-red-100 cursor-pointer hover:bg-red-200"
         >
           <Trash2 size={16} className="text-red-500" />
         </button>

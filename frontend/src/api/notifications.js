@@ -1,3 +1,4 @@
+// /frontend/src/api/notifications.js
 import http from './client'
 
 export const getNotifications = () =>
