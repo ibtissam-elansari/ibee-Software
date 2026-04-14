@@ -31,10 +31,10 @@ class NotificationOut(BaseModel):
 # ── Thresholds ────────────────────────────────────────────────────────────────
 
 THRESHOLDS = {
-    "temperature_c" : 38.0,   # °C  — adjust to your domain
-    "humidity_pct"  : 75.0,   # %
-    "battery_v"     : 3.5,    # V   (~20%)
-    "sound_level"   : 70,     # 0-100 scale
+    "temperature_c" : {"attention": 35.0, "urgente": 40.0},
+    "humidity_pct"  : {"attention": 70.0, "urgente": 80.0},
+    "battery_v"     : 3.5,
+    "sound_level"   : 80,   # matches (sound ?? 0) > 80
 }
 
 
@@ -61,24 +61,38 @@ def _build_notifications(
             hive_name = hive_name,
         ))
 
-    if m.temperature_c is not None and m.temperature_c >= THRESHOLDS["temperature_c"]:
+    if m.temperature_c is not None and m.temperature_c > THRESHOLDS["temperature_c"]["attention"]:
+        is_urgent = m.temperature_c > THRESHOLDS["temperature_c"]["urgente"]
         notifs.append(NotificationOut(
             id        = f"{m.id}-temp",
             type      = "temperature",
-            title     = "Alerte Température",
-            message   = f"Ruche {hive_name} : {round(m.temperature_c, 1)}°C détectés (Urgent)",
+            title     = "Alerte Température" if is_urgent else "Température Élevée",
+            message   = f"Ruche {hive_name} : {round(m.temperature_c, 1)}°C détectés {'(Urgent)' if is_urgent else ''}",
             time      = _fmt_time(m.ts),
             ts        = m.ts,
             hive_id   = hive_id,
             hive_name = hive_name,
         ))
 
-    if m.humidity_pct is not None and m.humidity_pct >= THRESHOLDS["humidity_pct"]:
+    if m.humidity_pct is not None and m.humidity_pct > THRESHOLDS["humidity_pct"]["attention"]:
+        is_urgent = m.humidity_pct > THRESHOLDS["humidity_pct"]["urgente"]
         notifs.append(NotificationOut(
             id        = f"{m.id}-hum",
             type      = "humidity",
             title     = "Humidité Élevée",
             message   = f"Ruche {hive_name} : Taux d'humidité supérieur à {round(m.humidity_pct)}%",
+            time      = _fmt_time(m.ts),
+            ts        = m.ts,
+            hive_id   = hive_id,
+            hive_name = hive_name,
+        ))
+
+    if m.sound_level is not None and m.sound_level > THRESHOLDS["sound_level"]:
+        notifs.append(NotificationOut(
+            id        = f"{m.id}-sound",
+            type      = "sound",
+            title     = "Activité Sonore",
+            message   = f"Ruche {hive_name} : Niveau sonore élevé ({m.sound_level})",
             time      = _fmt_time(m.ts),
             ts        = m.ts,
             hive_id   = hive_id,
@@ -91,18 +105,6 @@ def _build_notifications(
             type      = "battery",
             title     = "Batterie Faible",
             message   = f"Ruche {hive_name} : Batterie à {round(m.battery_v, 2)}V",
-            time      = _fmt_time(m.ts),
-            ts        = m.ts,
-            hive_id   = hive_id,
-            hive_name = hive_name,
-        ))
-
-    if m.sound_level is not None and m.sound_level >= THRESHOLDS["sound_level"]:
-        notifs.append(NotificationOut(
-            id        = f"{m.id}-sound",
-            type      = "sound",
-            title     = "Activité Sonore",
-            message   = f"Ruche {hive_name} : Niveau sonore élevé ({m.sound_level})",
             time      = _fmt_time(m.ts),
             ts        = m.ts,
             hive_id   = hive_id,
