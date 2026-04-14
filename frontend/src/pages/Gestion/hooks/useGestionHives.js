@@ -3,7 +3,8 @@ import {
   useCreateHive,
   useUpdateHive,
   useDeleteHive,
-} from '../../../../hooks/useHives';
+} from '../../../hooks/useHives';
+
 
 export function useGestionHives() {
   const [modal, setModal] = useState({
