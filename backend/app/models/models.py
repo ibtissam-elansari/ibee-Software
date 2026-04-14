@@ -30,6 +30,8 @@ class Hive(SQLModel, table=True):
     location_name : Optional[str] = Field(default=None)
     created_at    : datetime      = Field(default_factory=_utcnow, index=True)
 
+    is_active     : bool          = Field(default=True, index=True)
+    deleted_at    : Optional[datetime] = Field(default=None, index=True)
 
 class Device(SQLModel, table=True):
     id           : Optional[int]      = Field(default=None, primary_key=True)
