@@ -1,48 +1,88 @@
 import React from 'react'
-import { X } from 'lucide-react'
+import { X, Lock, Thermometer, Droplets, Battery, Volume2, MapPin } from 'lucide-react'
 
-// Icon per notification type — matches the Figma colored dots
 const TYPE_CONFIG = {
-  security    : { dot: '#1D5FCA', label: 'Alerte de sécurité',  bg: 'bg-orange-50'  },
-  temperature : { dot: '#EF4444', label: 'Alerte Température',  bg: 'bg-red-50'     },
-  humidity    : { dot: '#3B82F6', label: 'Humidité Élevée',     bg: 'bg-blue-50'    },
-  battery     : { dot: '#F59E0B', label: 'Batterie Faible',     bg: 'bg-amber-50'   },
-  sound       : { dot: '#22C55E', label: 'Activité Sonore',     bg: 'bg-green-50'   },
-  geofencing  : { dot: '#EF4444', label: 'Hors Zone',           bg: 'bg-red-50'     },
+  security: {
+    bg         : 'bg-orange-50',
+    titleColor : 'text-orange-500',
+    label      : 'Alerte de sécurité',
+    Icon       : Lock,
+    iconColor  : '#1D5FCA',   // blue lock — matches Figma exactly
+  },
+  temperature: {
+    bg         : 'bg-red-50',
+    titleColor : 'text-red-500',
+    label      : 'Alerte Température',
+    Icon       : Thermometer,
+    iconColor  : '#EF4444',
+  },
+  humidity: {
+    bg         : 'bg-blue-50',
+    titleColor : 'text-blue-500',
+    label      : 'Humidité Élevée',
+    Icon       : Droplets,
+    iconColor  : '#3B82F6',
+  },
+  battery: {
+    bg         : 'bg-amber-50',
+    titleColor : 'text-amber-500',
+    label      : 'Batterie Faible',
+    Icon       : Battery,
+    iconColor  : '#F59E0B',
+  },
+  sound: {
+    bg         : 'bg-green-50',
+    titleColor : 'text-green-600',
+    label      : 'Activité Sonore',
+    Icon       : Volume2,
+    iconColor  : '#22C55E',
+  },
+  geofencing: {
+    bg         : 'bg-red-50',
+    titleColor : 'text-red-500',
+    label      : 'Hors Zone (Geofencing)',
+    Icon       : MapPin,
+    iconColor  : '#EF4444',
+  },
 }
 
+const FALLBACK = TYPE_CONFIG.security
+
 const NotificationItem = ({ notification, onDismiss }) => {
-  const config = TYPE_CONFIG[notification.type] ?? TYPE_CONFIG.security
+  const config = TYPE_CONFIG[notification.type] ?? FALLBACK
+  const { Icon } = config
 
   return (
     <div className={`relative rounded-xl px-4 py-3 ${config.bg}`}>
-      {/* Dismiss button */}
+
+      {/* Dismiss — top right */}
       {onDismiss && (
         <button
           onClick={() => onDismiss(notification.id)}
-          className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 transition-colors"
+          className="absolute top-2.5 right-2.5 text-gray-300 hover:text-gray-500 transition-colors"
+          aria-label="Ignorer"
         >
           <X className="w-3.5 h-3.5" />
         </button>
       )}
 
-      {/* Type label */}
-      <p className="text-xs font-semibold text-gray-700 mb-1 pr-4">
+      {/* Title — colored, matches notification type */}
+      <p className={`text-xs font-semibold mb-1.5 pr-5 ${config.titleColor}`}>
         {notification.title}
       </p>
 
-      {/* Message + icon dot */}
+      {/* Message row — text left, icon right */}
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs text-gray-500 leading-relaxed flex-1">
+        <p className="text-xs text-gray-600 leading-relaxed flex-1">
           {notification.message}
         </p>
-        <span
-          className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5"
-          style={{ backgroundColor: config.dot }}
+        <Icon
+          className="flex-shrink-0 mt-0.5"
+          style={{ color: config.iconColor, width: 14, height: 14 }}
         />
       </div>
 
-      {/* Time */}
+      {/* Timestamp — bottom right */}
       <p className="text-[10px] text-gray-400 mt-2 text-right">
         {notification.time}
       </p>
