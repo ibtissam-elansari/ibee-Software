@@ -63,26 +63,37 @@ def post_json(url: str, payload: dict) -> tuple[int, str]:
 # ── Data generator ───────────────────────────────────────────────────────
 
 def generate_measurement(step: int, lat: float, lng: float, offset: float) -> dict:
-    temp = 33.5 + offset + random.uniform(-1.5, 1.5)
-    hum = 62.0 + offset + random.uniform(-6.0, 6.0)
-    sound = max(10, min(90, int(40 + random.uniform(-20, 20))))
+    # ~15% chance of an alert scenario for this reading
+    alert_mode = random.random() < 0.15
+
+    temp = (
+        random.uniform(36.0, 42.0)   # crosses both attention+urgente thresholds
+        if alert_mode
+        else 33.5 + offset + random.uniform(-1.5, 1.5)
+    )
+    hum = (
+        random.uniform(71.0, 85.0)   # crosses both thresholds
+        if alert_mode
+        else 62.0 + offset + random.uniform(-6.0, 6.0)
+    )
+    sound = max(10, min(100, int(
+        random.uniform(75, 95) if alert_mode else 40 + random.uniform(-20, 20)
+    )))
     door_open = random.random() < 0.05
 
-    # battery slowly decreases per device
     batt = 3.95 - min(0.5, step * 0.0005) + random.uniform(-0.01, 0.01)
 
-    # small GPS jitter
     lat_jitter = lat + random.uniform(-0.0002, 0.0002)
     lng_jitter = lng + random.uniform(-0.0002, 0.0002)
 
     return {
         "temperature_c": round(temp, 2),
-        "humidity_pct": round(hum, 2),
-        "sound_level": sound,
-        "door_open": door_open,
-        "gps_lat": round(lat_jitter, 6),
-        "gps_lng": round(lng_jitter, 6),
-        "battery_v": round(batt, 3),
+        "humidity_pct":  round(hum, 2),
+        "sound_level":   sound,
+        "door_open":     door_open,
+        "gps_lat":       round(lat_jitter, 6),
+        "gps_lng":       round(lng_jitter, 6),
+        "battery_v":     round(batt, 3),
     }
 
 
