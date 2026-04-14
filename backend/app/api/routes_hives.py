@@ -68,7 +68,11 @@ async def list_hives(
     session: AsyncSession = Depends(get_session), 
     current : dict         = Depends(get_current_user),
 ):
-    result = await session.execute(select(Hive).order_by(Hive.created_at))
+    result = await session.execute(
+        select(Hive)
+        .where(Hive.deleted_at.is_(None))
+        .order_by(Hive.created_at)
+    )
     return result.scalars().all()
 
 
@@ -99,14 +103,17 @@ async def update_hive(
 
 @router.delete("/hives/{hive_id}", status_code=204)
 async def delete_hive(
-    hive_id: int, 
+    hive_id: int,
     session: AsyncSession = Depends(get_session),
-    current : dict         = Depends(require_role("superuser")),
+    current: dict = Depends(require_role("superuser")),
 ):
     hive = await _get_hive_or_404(hive_id, session)
-    await session.delete(hive)
-    await session.commit()
 
+    hive.deleted_at = _utcnow()
+    hive.is_active = False
+
+    session.add(hive)
+    await session.commit()
 
 # ── HIVE MEASUREMENTS ────────────────────────────────────────────────────────
 
