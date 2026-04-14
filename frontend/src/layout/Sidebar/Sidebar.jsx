@@ -14,7 +14,7 @@ const Sidebar = () => {
 
   return (
     <aside
-      className="fixed left-2 top-2 bottom-2 w-64 rounded-box bg-base-100 shadow-sm z-10 flex flex-col"
+      className="fixed left-2 top-2 bottom-2 w-64 rounded-box bg-base-100 shadow-sm flex flex-col"
       role="navigation"
       aria-label="Navigation principale"
     >

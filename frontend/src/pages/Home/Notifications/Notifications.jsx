@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Bell, SlidersHorizontal } from 'lucide-react'
-import { useNotifications } from '../../hooks/useNotifications'
+import { useNotifications } from '../../../hooks/useNotifications'
 import NotificationItem from './components/Notification'
 
 const Notifications = () => {
@@ -20,7 +20,7 @@ const Notifications = () => {
         fixed top-2 bottom-2 right-2 w-72
         bg-white rounded-2xl shadow-sm
         border border-gray-100
-        flex flex-col overflow-hidden z-10
+        flex flex-col overflow-hidden
       "
     >
       {/* ── Header ── */}
