@@ -10,18 +10,10 @@ const GestionPage = () => {
   const { hives, isLoading } = useHivesField();
 
   const {
-    modal,
-    openCreate,
-    openSettings,
-    openDelete,
-    closeModal,
-    handleCreate,
-    handleToggle,
-    handleDelete,
-    creating,
-    updating,
-    deleting,
-  } = useGestionHives();
+    modal, openCreate, openSettings, openDelete, closeModal,
+    handleCreate, handleUpdate, handleDelete,   // ← no handleToggle
+    creating, updating, deleting,
+  } = useGestionHives()
 
   return (
     <div className="p-6">
@@ -47,7 +39,7 @@ const GestionPage = () => {
         modal={modal}
         onClose={closeModal}
         onCreate={handleCreate}
-        onToggle={handleToggle}
+        onUpdate={handleUpdate}
         onDelete={handleDelete}
         creating={creating}
         updating={updating}
