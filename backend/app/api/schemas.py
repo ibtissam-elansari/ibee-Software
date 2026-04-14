@@ -18,6 +18,7 @@ class HiveCreate(BaseModel):
 class HiveUpdate(BaseModel):
     name          : Optional[str] = None
     location_name : Optional[str] = None
+    is_active     : Optional[bool] = None
 
 
 class DeviceCreate(BaseModel):
