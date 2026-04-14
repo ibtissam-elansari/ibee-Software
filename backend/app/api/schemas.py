@@ -32,6 +32,8 @@ class HiveOut(BaseModel):
     name          : str
     location_name : Optional[str] = None
     created_at    : datetime
+    is_active     : bool
+    deleted_at    : Optional[datetime]
 
     class Config:
         from_attributes = True
