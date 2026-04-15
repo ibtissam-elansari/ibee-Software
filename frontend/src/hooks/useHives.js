@@ -31,13 +31,21 @@ export function useHiveList() {
 }
 
 export function useAllHivesLatest(hiveIds = []) {
-  return useQueries({
-    queries: hiveIds.map(id => ({
-      queryKey: ['hive-latest', id],
-      queryFn: () => api.get(`/api/hives/${id}/latest`).then(r => r.data),
-      refetchInterval: 15_000,
-      staleTime: 10_000,
-    })),
+  return useQuery({
+    queryKey        : ['hives-latest-all', hiveIds],
+    queryFn         : async () => {
+      if (!hiveIds.length) return [];
+      const results = await Promise.allSettled(
+        hiveIds.map(id => hivesApi.getHiveLatest(id))
+      );
+      return results.map((r, i) => ({
+        hive_id : hiveIds[i],
+        data    : r.status === 'fulfilled' ? r.value : null,
+      }));
+    },
+    enabled         : hiveIds.length > 0,
+    refetchInterval : 15_000,
+    staleTime       : 10_000,
   });
 }
 

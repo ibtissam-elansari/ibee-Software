@@ -164,7 +164,9 @@ const HivesField = () => {
                   <td colSpan={COLUMNS.length} className="px-4 py-12 text-center text-sm text-gray-400">
                     {search
                       ? `Aucune ruche trouvée pour "${search}"`
-                      : 'Aucune ruche enregistrée.'}
+                      : filter !== 'Toutes'
+                        ? `Aucune ruche en état "${filter}" pour le moment.`
+                        : 'Aucune ruche enregistrée.'}
                   </td>
                 </tr>
               ) : (
