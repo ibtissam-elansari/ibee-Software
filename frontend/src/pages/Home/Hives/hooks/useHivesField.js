@@ -1,8 +1,6 @@
-// /Home/Hives/hooks/useHivesField.js
-
 import { useState, useMemo } from 'react'
 import { useHiveList, useAllHivesLatest } from '../../../../hooks/useHives'
-import { deriveStatus } from '../utils'  // adjust path as needed
+import { deriveStatus } from '../lib/hiveUtils'
 
 const PAGE_SIZE = 8
 
@@ -16,40 +14,43 @@ export function useHivesField() {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [page,         setPage]         = useState(1)
 
-  // Fetch latest sensor data for every hive in parallel
   const hiveIds = useMemo(() => hives.map(h => h.id), [hives])
-  const latestQueries = useAllHivesLatest(hiveIds)
 
-  // Build a id → latest map
+  // Single query for all latest — same pattern as useDashboardStats
+  const { data: latestList = [], isLoading: latestLoading } = useAllHivesLatest(hiveIds)
+
+  // id → latest measurement map
   const latestByHiveId = useMemo(() => {
     const map = {}
-    hives.forEach((hive, i) => {
-      const data = latestQueries[i]?.data ?? null
-      map[hive.id] = data
+    latestList.forEach(({ hive_id, data }) => {
+      map[hive_id] = data  // null if that hive had no measurements
     })
     return map
-  }, [hives, latestQueries])
+  }, [latestList])
 
-  // Enrich each hive with its derived status
+  // Enrich hives with derived status + raw latest
   const enrichedHives = useMemo(() =>
     hives.map(hive => {
       const m = latestByHiveId[hive.id]
-      const status = m
+      const status = (m != null && !latestLoading)
         ? deriveStatus(m.temperature_c, m.humidity_pct, m.sound_level, m.door_open)
         : 'Inconnue'
-      return { ...hive, _status: status, _latest: m }
+      return { ...hive, _status: status, _latest: m ?? null }
     }),
-    [hives, latestByHiveId]
+    [hives, latestByHiveId, latestLoading]
   )
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return enrichedHives.filter(h => {
       const matchesSearch = q === '' || (h.name ?? '').toLowerCase().includes(q)
-      const matchesFilter = filter === 'Toutes' || h._status === filter
+      // While loading, show all hives regardless of filter
+      const matchesFilter = latestLoading
+        ? true
+        : filter === 'Toutes' || h._status === filter
       return matchesSearch && matchesFilter
     })
-  }, [enrichedHives, search, filter])
+  }, [enrichedHives, search, filter, latestLoading])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage   = Math.min(page, totalPages)
@@ -72,7 +73,7 @@ export function useHivesField() {
     hives: enrichedHives,
     filtered,
     paginated,
-    isLoading,
+    isLoading: isLoading || latestLoading,
     isError,
     search,       setSearch: handleSetSearch,
     filter,       setFilter: handleSetFilter,
@@ -88,6 +89,5 @@ export function useHivesField() {
     openAddModal   : () => setAddModalOpen(true),
     closeAddModal  : () => setAddModalOpen(false),
     lastUpdateLabel,
-    latestByHiveId,   // expose if HiveRow needs it to avoid double-fetching
   }
 }
