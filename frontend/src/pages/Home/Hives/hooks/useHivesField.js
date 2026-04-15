@@ -1,7 +1,8 @@
-// /Home/Hives/hooks/useHivesField
+// /Home/Hives/hooks/useHivesField.js
 
 import { useState, useMemo } from 'react'
-import { useHiveList } from '../../../../hooks/useHives'
+import { useHiveList, useAllHivesLatest } from '../../../../hooks/useHives'
+import { deriveStatus } from '../utils'  // adjust path as needed
 
 const PAGE_SIZE = 8
 
@@ -15,14 +16,40 @@ export function useHivesField() {
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [page,         setPage]         = useState(1)
 
+  // Fetch latest sensor data for every hive in parallel
+  const hiveIds = useMemo(() => hives.map(h => h.id), [hives])
+  const latestQueries = useAllHivesLatest(hiveIds)
+
+  // Build a id → latest map
+  const latestByHiveId = useMemo(() => {
+    const map = {}
+    hives.forEach((hive, i) => {
+      const data = latestQueries[i]?.data ?? null
+      map[hive.id] = data
+    })
+    return map
+  }, [hives, latestQueries])
+
+  // Enrich each hive with its derived status
+  const enrichedHives = useMemo(() =>
+    hives.map(hive => {
+      const m = latestByHiveId[hive.id]
+      const status = m
+        ? deriveStatus(m.temperature_c, m.humidity_pct, m.sound_level, m.door_open)
+        : 'Inconnue'
+      return { ...hive, _status: status, _latest: m }
+    }),
+    [hives, latestByHiveId]
+  )
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    // Name search only — status filter needs sensor data which
-    // is loaded async per row, not available here
-    return hives.filter(h =>
-      q === '' || (h.name ?? '').toLowerCase().includes(q)
-    )
-  }, [hives, search])
+    return enrichedHives.filter(h => {
+      const matchesSearch = q === '' || (h.name ?? '').toLowerCase().includes(q)
+      const matchesFilter = filter === 'Toutes' || h._status === filter
+      return matchesSearch && matchesFilter
+    })
+  }, [enrichedHives, search, filter])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage   = Math.min(page, totalPages)
@@ -42,7 +69,7 @@ export function useHivesField() {
   const handleSetFilter = (v) => { setFilter(v); setPage(1) }
 
   return {
-    hives,
+    hives: enrichedHives,
     filtered,
     paginated,
     isLoading,
@@ -61,5 +88,6 @@ export function useHivesField() {
     openAddModal   : () => setAddModalOpen(true),
     closeAddModal  : () => setAddModalOpen(false),
     lastUpdateLabel,
+    latestByHiveId,   // expose if HiveRow needs it to avoid double-fetching
   }
 }
