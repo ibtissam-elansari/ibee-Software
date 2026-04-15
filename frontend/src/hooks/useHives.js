@@ -44,10 +44,11 @@ export function useHiveLatest(hiveId) {
 // ── History for charts ────────────────────────────────────────────────────────
 export function useHiveHistory(hiveId, limit = 100) {
   return useQuery({
-    queryKey : hiveKeys.history(hiveId),
-    queryFn  : () => hivesApi.getHiveHistory(hiveId, limit),
-    enabled  : !!hiveId,
-    staleTime: 30_000,
+    queryKey       : hiveKeys.history(hiveId),
+    queryFn        : () => hivesApi.getHiveHistory(hiveId, limit),
+    enabled        : !!hiveId,
+    refetchInterval: 15_000,  // same cadence as latest
+    staleTime      : 10_000,
   });
 }
 
