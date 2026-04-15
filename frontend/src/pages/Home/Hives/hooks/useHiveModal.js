@@ -2,12 +2,7 @@ import { useMemo } from 'react';
 import { useHiveLatest, useHiveHistory } from '../../../../hooks/useHives';
 import { voltsToPct, thresholdColor, formatTime } from '../lib/hiveUtils';
 
-/**
- * useHiveModal — all data + derived values for the hive detail modal.
- *
- * HiveModal becomes a pure render component — it only decides what to show,
- * this hook decides what the values mean.
- */
+
 export function useHiveModal(hiveId) {
   const { data: latest,  isLoading: loadingLatest  } = useHiveLatest(hiveId);
   const { data: history, isLoading: loadingHistory } = useHiveHistory(hiveId, 50);
@@ -31,7 +26,7 @@ export function useHiveModal(hiveId) {
   // Chart data — transformed here, not inside the component
   const chartData = useMemo(() =>
     (history ?? []).map(d => ({
-      time          : formatTime(d.ts).slice(0, 5), // HH:mm only
+      time          : formatTime(d.ts),        // HH:mm:ss instead of slicing to HH:mm
       'Temp (°C)'   : d.temperature_c != null ? +d.temperature_c.toFixed(1) : null,
       'Humidité (%)': d.humidity_pct  != null ? +d.humidity_pct.toFixed(1)  : null,
     })),
@@ -39,7 +34,7 @@ export function useHiveModal(hiveId) {
   );
 
   // Key that forces recharts to remount on new data (avoids stale animation)
-  const chartKey = `chart-${hiveId}-${history?.length ?? 0}-${latest?.ts ?? ''}`;
+  const chartKey = `chart-${hiveId}-${latest?.ts ?? ''}`;
 
   return {
     loadingLatest,
