@@ -4,14 +4,8 @@ import BatteryCell  from './BatteryCell';
 import SignalCell   from './SignalCell';
 import SecurityCell from './SecurityCell';
 
-/**
- * HiveRow — purely presentational.
- *
- * Zero business logic. All values come pre-derived from useHiveRow.
- * Adding a new column = add a return value in useHiveRow, add a <td> here.
- */
-const HiveRow = ({ hive, onClick }) => {
-  const { isLoading, display } = useHiveRow(hive.id);
+const HiveRow = ({ hive, latest: latestProp, onClick }) => { 
+  const { isLoading, display } = useHiveRow(hive.id, latestProp); 
 
   const cell = 'px-4 py-4 text-sm';
 
