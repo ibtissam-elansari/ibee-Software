@@ -1,5 +1,5 @@
 // /hooks/useHives.js
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
 import * as hivesApi from '../api/hives';
 import useHiveStore from '../store/useHiveStore';
 import { useEffect } from 'react';
@@ -28,6 +28,17 @@ export function useHiveList() {
   }, [query.data, setHives]);
 
   return query;
+}
+
+export function useAllHivesLatest(hiveIds = []) {
+  return useQueries({
+    queries: hiveIds.map(id => ({
+      queryKey: ['hive-latest', id],
+      queryFn: () => api.get(`/api/hives/${id}/latest`).then(r => r.data),
+      refetchInterval: 15_000,
+      staleTime: 10_000,
+    })),
+  });
 }
 
 // ── Latest measurement for one hive (polling every 15s) ──────────────────────
