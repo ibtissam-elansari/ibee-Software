@@ -139,7 +139,7 @@ const HivesField = () => {
                 {COLUMNS.map(col => (
                   <th
                     key={col.key}
-                    className="px-4 py-2.5 text-left
+                    className="px-4 py-2.5 text-left border-b border-gray-200
                                text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400"
                   >
                     {col.label}
@@ -169,7 +169,7 @@ const HivesField = () => {
                 </tr>
               ) : (
                 paginated.map(hive => (
-                  <HiveRow key={hive.id} hive={hive} onClick={openHiveModal} />
+                  <HiveRow key={hive.id} hive={hive} latest={hive._latest} onClick={openHiveModal} />
                 ))
               )}
             </tbody>

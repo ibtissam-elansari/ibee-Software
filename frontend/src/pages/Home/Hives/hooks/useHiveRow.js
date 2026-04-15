@@ -7,44 +7,21 @@ import {
   statusColor,
 } from '../lib/hiveUtils';
 
-/**
- * useHiveRow — encapsulates ALL logic for a single hive table row.
- *
- * The component (HiveRow) calls this hook and receives display-ready values.
- * HiveRow itself contains zero business logic — only JSX.
- *
- * @param {number} hiveId
- * @returns {{
- *   isLoading: boolean,
- *   display: {
- *     name: string,
- *     status: string,
- *     statusColor: string,
- *     batteryPct: number|null,
- *     soundHz: string,
- *     temp: number|null,
- *     tempColor: string,
- *     humidity: number|null,
- *     humidityColor: string,
- *     soundColor: string,
- *     rssi: number|null,
- *     doorOpen: boolean|null,
- *     urgent: boolean,
- *     rowBg: string,
- *     leftAccent: string,
- *   }
- * }}
- */
-export function useHiveRow(hiveId) {
-  const { data: latest, isLoading } = useHiveLatest(hiveId);
+export function useHiveRow(hiveId, latestProp = null) {
+  const { data: latestFetched, isLoading: fetchLoading } = useHiveLatest(hiveId, {
+    enabled: !latestProp,   // skip fetch if parent already provides data
+  });
+
+  const latest   = latestProp ?? latestFetched;
+  const isLoading = !latestProp && fetchLoading;
 
   // ── Raw values ──────────────────────────────────────────────────────────────
-  const temp      = latest?.temperature_c ?? null;
-  const humidity  = latest?.humidity_pct  ?? null;
-  const sound     = latest?.sound_level   ?? null;
-  const doorOpen  = latest?.door_open     ?? null;
-  const rssi      = latest?.rssi          ?? null;
-  const batteryV  = latest?.battery_v     ?? null;
+  const temp     = latest?.temperature_c ?? null;
+  const humidity = latest?.humidity_pct  ?? null;
+  const sound    = latest?.sound_level   ?? null;
+  const doorOpen = latest?.door_open     ?? null;
+  const rssi     = latest?.rssi          ?? null;
+  const batteryV = latest?.battery_v     ?? null;
 
   // ── Derived display values ──────────────────────────────────────────────────
   const batteryPct = voltsToPct(batteryV);
