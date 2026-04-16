@@ -111,7 +111,7 @@ const MetricDetailPage = () => {
   } = useMetricDetail(id, metric);
 
   return (
-    <div className="relative min-h-full overflow-hidden" style={{ background: '#FDFAF4' }}>
+    <div className="relative min-h-full overflow-hidden" style={{ background: '#FBFAF7' }}>
       {/* <HoneycombTopRight /> */}
       <HoneycombBottomRight />
 
