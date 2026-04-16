@@ -16,7 +16,7 @@ const GestionPage = () => {
   } = useGestionHives()
 
   return (
-    <div className="p-6">
+    <div className="p-6 h-screen  bg-white">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
         <AddHiveCard onClick={openCreate} />
