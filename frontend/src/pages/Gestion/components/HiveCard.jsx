@@ -1,7 +1,9 @@
 import React from 'react';
 import { Settings, Trash2, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 const HiveCard = ({ hive, onSettings, onDelete }) => {
+  const navigate = useNavigate();
 
   const beeSVG = (
     <svg height="80px" width="80px" version="1.1" id="_x32_" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
@@ -44,10 +46,10 @@ const HiveCard = ({ hive, onSettings, onDelete }) => {
     <div
       className={`
         rounded-2xl border bg-white overflow-hidden
-        hover:shadow-lg transition cursor-pointer
+        hover:shadow-lg transition
         ${!hive.is_active ? 'opacity-50' : ''}
       `}
-      onClick={() => {console.log(hive);}}
+     
     >
 
       {/* BODY */}
@@ -88,7 +90,7 @@ const HiveCard = ({ hive, onSettings, onDelete }) => {
       </div>
 
 
-      <div className="p-3 flex justify-between items-center">
+      <div className="p-3 flex justify-between items-center  cursor-pointer"  onClick={() => navigate(`/gestion/${hive.id}`)}>
         <div>
           <p className="font-semibold">{hive.name}</p>
         </div>

@@ -1,7 +1,9 @@
 import ProtectedRoute from './ProtectedRoute';
 import { GestionPage, HomePage, SettingsPage } from '../pages';
 import AuthPage from '../pages/Auth/AuthPage';
-import UsersPage from '../pages/Users/UsersPage';  // create this page
+import UsersPage from '../pages/Users/UsersPage';
+import HiveAnalyticsPage from '../pages/Analytics/HiveAnalyticsPage';
+import MetricDetailPage from '../pages/Analytics/MetricDetailPage';
 
 export const publicRoutes = [
   { path: '/login', element: AuthPage },
@@ -24,7 +26,9 @@ export const protectedRoutes = [
   {
     element  : <ProtectedRoute allowedRoles={['superuser']} />,
     children : [
-      { path: '/gestion', element: GestionPage },
+      { path: '/gestion',                              element: GestionPage         },
+      { path: '/gestion/:hiveId',                      element: HiveAnalyticsPage   },
+      { path: '/gestion/:hiveId/details/:metric',      element: MetricDetailPage    },
     ],
   },
 ];
