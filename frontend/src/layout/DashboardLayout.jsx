@@ -4,7 +4,7 @@ import { Outlet } from 'react-router';
 
 const DashboardLayout = () => {
   return (
-    <div className="min-h-screen bg-base-200">
+    <div className="min-h-screen bg-base-200 " style={{ background: '#FBFAF7' }}>
       <Sidebar />
       <main
         className="
@@ -14,6 +14,7 @@ const DashboardLayout = () => {
           bg-base-100 shadow-sm rounded-box
           transition-all duration-300 ease-in-out
         "
+        
       >
         <Outlet />
       </main>

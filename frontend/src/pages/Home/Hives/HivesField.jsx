@@ -68,10 +68,10 @@ const HivesField = () => {
 
   return (
     <>
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5 p-2 px-5 border rounded-2xl bg-white">
 
         {/* Heading */}
-        <h2 className="text-2xl font-bold text-gray-900">Les ruches</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mt-1">Les ruches</h2>
 
         {/* Toolbar */}
 
@@ -181,7 +181,7 @@ const HivesField = () => {
         )}
         
         {totalPages > 1 && (
-          <div className="w-full mt-2">
+          <div className="w-full my-2">
 
             {/* Buttons */}
             <div className="flex justify-between gap-1 px-6">

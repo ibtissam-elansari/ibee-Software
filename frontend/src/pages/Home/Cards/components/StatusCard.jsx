@@ -16,9 +16,9 @@ const StatusCard = ({ card }) => {
   return (
     <div className={`
       relative flex flex-col justify-between
-      bg-base-100 rounded-2xl shadow-md border p-4
+       rounded-2xl shadow-md border p-4
       min-h-[150px] transition-all duration-300
-      ${urgent ? 'border-red-400 bg-red-50' : 'border-base-200'}
+      ${urgent ? 'border-red-400 bg-red-50' : 'border-base-200 bg-white'}
     `}>
 
       {/* Top row — label + icon */}
