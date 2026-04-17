@@ -3,7 +3,6 @@ import {
   ResponsiveContainer, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
-import { ChartTooltip } from './ChartTooltip'
 import { METRIC_CONFIG } from '../config/metricConfig'
 
 const LINES = ['temperature', 'humidity', 'sound'].map(k => ({
@@ -11,19 +10,48 @@ const LINES = ['temperature', 'humidity', 'sound'].map(k => ({
   color : METRIC_CONFIG[k].chartColor,
 }))
 
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-gray-800 text-white rounded-xl px-3 py-2.5 text-xs shadow-xl min-w-[120px]">
+      <p className="text-gray-400 mb-2 font-medium">{label}</p>
+      {payload.map(p => (
+        <p key={p.name} style={{ color: p.color }} className="font-semibold">
+          {p.value}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+// Custom legend that shows the full key name (which already includes the unit)
+const CustomLegend = ({ payload }) => (
+  <div className="flex items-center justify-center gap-6 pt-4">
+    {payload.map(entry => (
+      <div key={entry.value} className="flex items-center gap-1.5">
+        <span
+          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+          style={{ backgroundColor: entry.color }}
+        />
+        <span className="text-xs text-gray-500">{entry.value}</span>
+      </div>
+    ))}
+  </div>
+)
+
 const ComparativeChart = ({ data, isLoading }) => {
   if (isLoading) return (
-    <div className="h-72 bg-gray-50 rounded-xl animate-pulse mt-4" />
+    <div className="h-72 bg-gray-50 rounded-xl animate-pulse" />
   )
   if (!data?.length) return (
-    <div className="h-72 flex items-center justify-center bg-gray-50 rounded-xl text-sm text-gray-300 mt-4">
-      Pas encore de données
+    <div className="h-72 flex items-center justify-center bg-gray-50 rounded-xl text-sm text-gray-300">
+      Pas encore de données pour cette période
     </div>
   )
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data} margin={{ top: 12, right: 16, left: -12, bottom: 0 }}>
+      <LineChart data={data} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
         <CartesianGrid
           strokeDasharray="4 4"
           stroke="rgba(0,0,0,0.06)"
@@ -44,21 +72,17 @@ const ComparativeChart = ({ data, isLoading }) => {
           tickLine={false}
         />
         <Tooltip
-          content={<ChartTooltip />}
+          content={<CustomTooltip />}
           cursor={{ stroke: '#E5E7EB', strokeWidth: 1, strokeDasharray: '4 4' }}
         />
-        <Legend
-          wrapperStyle={{ fontSize: 12, paddingTop: 16 }}
-          iconType="circle"
-          iconSize={8}
-        />
+        <Legend content={<CustomLegend />} />
         {LINES.map(({ key, color }) => (
           <Line
             key={key}
-            type="monotoneX"
+            type="monotone"
             dataKey={key}
             stroke={color}
-            strokeWidth={2.5}
+            strokeWidth={2}
             dot={false}
             connectNulls
             activeDot={{ r: 5, fill: color, stroke: 'white', strokeWidth: 2 }}
