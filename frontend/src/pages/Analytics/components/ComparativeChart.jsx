@@ -39,7 +39,7 @@ const CustomLegend = ({ payload }) => (
   </div>
 )
 
-const ComparativeChart = ({ data, isLoading }) => {
+const ComparativeChart = ({ data, isLoading, xAxisTicks }) => {
   if (isLoading) return (
     <div className="h-72 bg-gray-50 rounded-xl animate-pulse" />
   )
@@ -59,10 +59,10 @@ const ComparativeChart = ({ data, isLoading }) => {
         />
         <XAxis
           dataKey="time"
+          ticks={xAxisTicks}
           tick={{ fontSize: 10, fill: '#9CA3AF' }}
           axisLine={false}
           tickLine={false}
-          interval="preserveStartEnd"
         />
         <YAxis
           domain={[0, 100]}
