@@ -107,8 +107,11 @@ const MetricDetailPage = () => {
     startDate, setStartDate,
     endDate,   setEndDate,
     avg, max, min, alerts,
-    chartData, hasData,
-  } = useMetricDetail(id, metric);
+    chartData,
+    xAxisTicks,
+    hasData,
+    exportExcel,
+  } = useMetricDetail(id, metric)
 
   return (
     <div className="relative min-h-full overflow-hidden" style={{ background: '#FBFAF7' }}>
@@ -133,9 +136,12 @@ const MetricDetailPage = () => {
               <p className="text-xs text-gray-400 mt-0.5">{cfg.subtitle}</p>
             </div>
           </div>
-          <button className="flex items-center gap-2 px-3 py-2 rounded-lg
-                             bg-green-600 hover:bg-green-700 text-white text-xs font-semibold
-                             transition-colors">
+          <button
+            onClick={exportExcel}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg
+                      bg-green-600 hover:bg-green-700 text-white text-xs font-semibold
+                      transition-colors"
+          >
             <Download className="w-3.5 h-3.5" />
             Excel
           </button>
@@ -231,6 +237,7 @@ const MetricDetailPage = () => {
             metric={metric}
             unit={unit}
             isLoading={isLoading}
+            xAxisTicks={xAxisTicks}
           />
         </div>
       </div>

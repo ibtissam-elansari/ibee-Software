@@ -22,6 +22,7 @@ const HiveAnalyticsPage = () => {
     signalLabel, rssi,
     metricRanges,
     chartData,
+    xAxisTicks,
     selectedDate, setSelectedDate,
     exportExcel,
   } = useHiveAnalytics(id)
@@ -166,7 +167,7 @@ const HiveAnalyticsPage = () => {
             </div>
           </div>
 
-          <ComparativeChart data={chartData} isLoading={isLoading} />
+          <ComparativeChart data={chartData} isLoading={isLoading} xAxisTicks={xAxisTicks} />
         </div>
 
       </div>
