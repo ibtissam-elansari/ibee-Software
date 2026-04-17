@@ -1,9 +1,13 @@
 import React from 'react';
 import { Settings, Trash2, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { useCurrentUserRole } from '../../../hooks/useUsers'; 
 
 const HiveCard = ({ hive, onSettings, onDelete }) => {
   const navigate = useNavigate();
+  const role = useCurrentUserRole(); 
+
+  const isSuperUser = role === 'superuser'; 
 
   const beeSVG = (
     <svg height="80px" width="80px" version="1.1" id="_x32_" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
@@ -49,52 +53,63 @@ const HiveCard = ({ hive, onSettings, onDelete }) => {
         hover:shadow-lg transition
         ${!hive.is_active ? 'opacity-50' : ''}
       `}
-     
     >
 
       {/* BODY */}
       <div className="bg-orange-50 mx-2 mt-2 border rounded-2xl relative">
 
-         {!hive.is_active && (
-            <p className="absolute top-20 left-30 items-center text-xs bg-white p-2 border rounded-lg">Inactive</p>
-          )}
-      {/* ACTIONS */}
-      <div className="flex justify-between p-3">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onSettings();
-          }}
-          className="p-2 rounded-full bg-gray-100 cursor-pointer hover:bg-gray-200"
-        >
-          <Settings size={16} />
-        </button>
+        {!hive.is_active && (
+          <p className="absolute top-20 left-30 text-xs bg-white p-2 border rounded-lg">
+            Inactive
+          </p>
+        )}
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="p-2 rounded-full bg-red-100 cursor-pointer hover:bg-red-200"
-        >
-          <Trash2 size={16} className="text-red-500" />
-        </button>
-      </div>
+        {/* ACTIONS (SUPERUSER ONLY) */}
+<div className="flex justify-between p-3">
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      onSettings();
+    }}
+    className={`p-2 rounded-full transition
+      ${isSuperUser
+        ? 'bg-gray-100 hover:bg-gray-200'
+        : 'opacity-0 pointer-events-none'
+      }`}
+  >
+    <Settings size={16} />
+  </button>
 
-      <div className='flex items-center justify-center mb-8'>
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      onDelete();
+    }}
+    className={`p-2 rounded-full transition
+      ${isSuperUser
+        ? 'bg-red-100 hover:bg-red-200'
+        : 'opacity-0 pointer-events-none'
+      }`}
+  >
+    <Trash2 size={16} className="text-red-500" />
+  </button>
+</div>
+
+        <div className="flex items-center justify-center mb-8">
           {beeSVG}
+        </div>
+
+        <div className="h-2 bg-black border rounded-b-2xl" />
       </div>
 
-      <div className="h-2 bg-black border rounded-b-2xl" />
-
-      </div>
-
-
-      <div className="p-3 flex justify-between items-center  cursor-pointer"  onClick={() => navigate(`/gestion/${hive.id}`)}>
+      {/* FOOTER */}
+      <div
+        className="p-3 flex justify-between items-center cursor-pointer"
+        onClick={() => navigate(`/gestion/${hive.id}`)}
+      >
         <div>
           <p className="font-semibold">{hive.name}</p>
         </div>
-
         <ChevronRight />
       </div>
     </div>
