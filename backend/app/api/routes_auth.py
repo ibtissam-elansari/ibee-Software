@@ -8,6 +8,7 @@ from app.db.engine import get_session
 from app.models.models import User, UserRole
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.dependencies import get_current_user, require_role, ROLE_HIERARCHY
+from datetime import datetime
 
 router = APIRouter()
 
@@ -37,6 +38,7 @@ class UserOut(BaseModel):
     id    : int
     email : str
     role  : UserRole
+    created_at: datetime
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
