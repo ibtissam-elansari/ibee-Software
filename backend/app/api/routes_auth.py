@@ -74,7 +74,10 @@ async def login(
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Email ou mot de passe invalide")
 
-    token = create_access_token({"sub": user.email, "role": user.role.value})
+    token = create_access_token({
+        "sub": str(user.id),
+        "role": user.role.value
+    })
 
     return {
         "access_token" : token,
@@ -119,7 +122,9 @@ async def get_me(
     current : dict          = Depends(get_current_user),
     session : AsyncSession  = Depends(get_session),
 ):
-    result = await session.execute(select(User).where(User.email == current["sub"]))
+    result = await session.execute(
+        select(User).where(User.id == int(current["sub"]))
+    )
     user   = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
