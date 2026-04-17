@@ -1,68 +1,117 @@
-import { useState, useMemo } from 'react';
-import { useHiveHistory } from '../../../hooks/useHives';
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { getHiveHistory } from '../../../api/hives'
+import { METRIC_CONFIG } from '../config/metricConfig'
 
-/**
- * useMetricDetail — owns all data for MetricDetailPage.
- *
- * @param {number}  hiveId
- * @param {'temperature'|'humidity'|'sound'} metric
- */
+const todayStr = () => new Date().toLocaleDateString('en-CA')
+
 export function useMetricDetail(hiveId, metric) {
-  const [range, setRange]   = useState('7j'); // 'J' | '7j' | 'Mois'
-  const [startDate, setStartDate] = useState('');
-  const [endDate,   setEndDate]   = useState('');
+  const [range,     setRange]     = useState('J')
+  const [startDate, setStartDate] = useState('')
+  const [endDate,   setEndDate]   = useState('')
 
-  const limit = range === 'J' ? 100 : range === '7j' ? 500 : 2000;
+  const cfg   = METRIC_CONFIG[metric] ?? METRIC_CONFIG.temperature
+  const field = { temperature: 'temperature_c', humidity: 'humidity_pct', sound: 'sound_level' }[metric]
+  const unit  = cfg.unit
+  const scale = cfg.scale
 
-  const { data: history, isLoading } = useHiveHistory(hiveId, limit);
+  // ── Build API params from range or custom date range ──────────────────────
+  const { apiStart, apiEnd, limit } = useMemo(() => {
+    // Custom date range takes priority
+    if (startDate || endDate) {
+      return {
+        apiStart : startDate ? new Date(startDate + 'T00:00:00').toISOString() : undefined,
+        apiEnd   : endDate   ? new Date(endDate   + 'T23:59:59').toISOString() : undefined,
+        limit    : 5000,
+      }
+    }
+    const now   = new Date()
+    const today = new Date(todayStr() + 'T00:00:00')
 
-  // ── Extract the right field ──────────────────────────────────────────────
-  const field = {
-    temperature : 'temperature_c',
-    humidity    : 'humidity_pct',
-    sound       : 'sound_level',
-  }[metric] ?? 'temperature_c';
+    if (range === 'J') {
+      return {
+        apiStart : today.toISOString(),
+        apiEnd   : new Date(todayStr() + 'T23:59:59').toISOString(),
+        limit    : 2000,
+      }
+    }
+    if (range === '7j') {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 7)
+      return { apiStart: d.toISOString(), apiEnd: undefined, limit: 5000 }
+    }
+    // Mois
+    const d = new Date(now)
+    d.setMonth(d.getMonth() - 1)
+    return { apiStart: d.toISOString(), apiEnd: undefined, limit: 10000 }
+  }, [range, startDate, endDate])
 
-  const unit = { temperature: '°C', humidity: '%', sound: 'Hz' }[metric] ?? '';
+  const { data: history, isLoading } = useQuery({
+    queryKey    : ['hives', hiveId, 'metric-detail', metric, range, startDate, endDate],
+    queryFn     : () => getHiveHistory(hiveId, limit, apiStart, apiEnd),
+    enabled     : !!hiveId,
+    staleTime   : 30_000,
+  })
 
-  // Alert thresholds (matches backend THRESHOLDS)
-  const alertThreshold = { temperature: 38, humidity: 75, sound: 70 }[metric];
-
-  // ── Scale raw value to display unit ────────────────────────────────────────
-  const scale = metric === 'sound' ? (v) => v * 2 : (v) => v;
-
-  // ── Filtered + scaled values ────────────────────────────────────────────────
-  const values = useMemo(() => {
-    if (!history?.length) return [];
-    let data = history;
-    if (startDate) data = data.filter(d => new Date(d.ts) >= new Date(startDate));
-    if (endDate)   data = data.filter(d => new Date(d.ts) <= new Date(endDate));
-    return data
+  // ── Extract + scale values ─────────────────────────────────────────────────
+  const values = useMemo(() =>
+    (history ?? [])
       .filter(d => d[field] != null)
-      .map(d => ({ raw: d[field], scaled: scale(d[field]), ts: d.ts }));
-  }, [history, field, startDate, endDate, metric]);
+      .map(d => ({ raw: d[field], scaled: scale(d[field]), ts: d.ts })),
+    [history, field, scale]
+  )
 
   // ── Aggregates ──────────────────────────────────────────────────────────────
-  const scaledValues = values.map(v => v.scaled);
-  const avg     = scaledValues.length ? scaledValues.reduce((a,b) => a+b, 0) / scaledValues.length : null;
-  const max     = scaledValues.length ? Math.max(...scaledValues) : null;
-  const min     = scaledValues.length ? Math.min(...scaledValues) : null;
-  const alerts  = values.filter(v => v.raw >= alertThreshold).length;
+  const scaledVals = values.map(v => v.scaled)
+  const avg    = scaledVals.length ? scaledVals.reduce((a,b) => a+b,0) / scaledVals.length : null
+  const max    = scaledVals.length ? Math.max(...scaledVals) : null
+  const min    = scaledVals.length ? Math.min(...scaledVals) : null
+  const alerts = values.filter(v => v.raw >= cfg.alertThreshold).length
 
-  // ── Chart data ──────────────────────────────────────────────────────────────
+  // ── Chart data + smart X ticks ─────────────────────────────────────────────
   const chartData = useMemo(() =>
     values.map(v => {
-      const dt = new Date(v.ts);
-      const dateLabel = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
-      const timeLabel = `${dateLabel}, ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+      const dt = new Date(v.ts)
+      // For day view: show HH:mm, for week/month: show DD/MM
+      const isDay  = range === 'J' && !startDate && !endDate
+      const label  = isDay
+        ? `${String(dt.getHours()).padStart(2,'0')}h${String(dt.getMinutes()).padStart(2,'0')}`
+        : `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`
       return {
-        time  : dateLabel,
-        tooltip: timeLabel,
+        time   : label,
+        tooltip: new Date(v.ts).toLocaleString('fr-FR'),
         value  : +v.scaled.toFixed(1),
-      };
+      }
     }),
-    [values]
-  );
+    [values, range, startDate, endDate]
+  )
+
+  const xAxisTicks = useMemo(() => {
+    if (chartData.length < 2) return undefined
+    const total = chartData.length
+    const step  = Math.max(1, Math.round(total / 8))
+    return chartData
+      .filter((_, i) => i % step === 0 || i === total - 1)
+      .map(d => d.time)
+  }, [chartData])
+
+  // ── Excel export ────────────────────────────────────────────────────────────
+  const exportExcel = () => {
+    if (!values.length) return
+    const headers = ['Date/Heure', `${cfg.fullLabel} (${unit})`]
+    const rows = values.map(v => [
+      new Date(v.ts).toLocaleString('fr-FR'),
+      v.scaled.toFixed(1),
+    ])
+    const csv  = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(';')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `IBEE_${metric}_${hiveId}_${range}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   return {
     isLoading,
@@ -70,13 +119,13 @@ export function useMetricDetail(hiveId, metric) {
     range, setRange,
     startDate, setStartDate,
     endDate,   setEndDate,
-    // Stats
     avg  : avg  != null ? +avg.toFixed(1)  : null,
     max  : max  != null ? +max.toFixed(1)  : null,
     min  : min  != null ? +min.toFixed(1)  : null,
     alerts,
-    // Chart
     chartData,
+    xAxisTicks,
     hasData: chartData.length > 0,
-  };
+    exportExcel,
+  }
 }
