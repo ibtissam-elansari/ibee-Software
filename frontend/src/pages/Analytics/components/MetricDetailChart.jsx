@@ -6,10 +6,9 @@ import {
 import { ChartTooltip } from './ChartTooltip'
 import { METRIC_CONFIG } from '../config/metricConfig'
 
-const MetricDetailChart = ({ data, metric, isLoading }) => {
+const MetricDetailChart = ({ data, metric, unit, isLoading, xAxisTicks }) => {
   const cfg   = METRIC_CONFIG[metric] ?? METRIC_CONFIG.temperature
   const color = cfg.chartColor
-  const unit  = cfg.unit
 
   if (isLoading) return (
     <div className="h-60 bg-gray-50 rounded-xl animate-pulse" />
@@ -26,16 +25,17 @@ const MetricDetailChart = ({ data, metric, isLoading }) => {
         <CartesianGrid strokeDasharray="4 4" stroke="rgba(0,0,0,0.06)" vertical={false} />
         <XAxis
           dataKey="time"
+          ticks={xAxisTicks}
           tick={{ fontSize: 10, fill: '#9CA3AF' }}
           axisLine={false}
           tickLine={false}
-          interval="preserveStartEnd"
         />
         <YAxis
           tick={{ fontSize: 10, fill: '#9CA3AF' }}
           axisLine={false}
           tickLine={false}
           tickFormatter={v => `${v}${unit}`}
+          width={50}
         />
         {/* Alert threshold reference line */}
         <ReferenceLine
