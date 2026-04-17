@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
-import { useHiveLatest, useHiveHistory, useHiveStats } from '../../../hooks/useHives'
+import { useHiveLatest, useHiveStats } from '../../../hooks/useHives'
+import { useQuery } from '@tanstack/react-query'
+import { getHiveHistory } from '../../../api/hives'
 import { METRIC_CONFIG } from '../config/metricConfig'
 
 const voltsToPct = (v) =>
@@ -11,13 +13,33 @@ const rssiToLabel = (rssi) =>
 const rssiBars = (rssi) =>
   rssi == null ? 0 : rssi >= -70 ? 3 : rssi >= -85 ? 2 : 1
 
-export function useHiveAnalytics(hiveId) {
-  // ── Date filter state lives here so the page stays clean ──────────────────
-  const [selectedDate, setSelectedDate] = useState('')   // 'YYYY-MM-DD' or ''
+// Today as 'YYYY-MM-DD' in local time
+const todayStr = () => new Date().toLocaleDateString('en-CA')
 
-  const { data: latest,  isLoading: ll } = useHiveLatest(hiveId)
-  const { data: history, isLoading: lh } = useHiveHistory(hiveId, 2000)
-  const { data: stats,   isLoading: ls } = useHiveStats(hiveId)
+export function useHiveAnalytics(hiveId) {
+  // ── Default to today ───────────────────────────────────────────────────────
+  const [selectedDate, setSelectedDate] = useState(todayStr)
+
+  const { data: latest, isLoading: ll } = useHiveLatest(hiveId)
+  const { data: stats,  isLoading: ls } = useHiveStats(hiveId)
+
+  // ── Fetch history for the selected date via API start/end params ───────────
+  // This avoids fetching 2000 rows and filtering client-side
+  const { data: history, isLoading: lh } = useQuery({
+    queryKey    : ['hives', hiveId, 'history', selectedDate],
+    queryFn     : () => {
+      if (!selectedDate) {
+        return getHiveHistory(hiveId, 200)
+      }
+      // Build start = midnight, end = end of day in UTC ISO strings
+      const start = new Date(selectedDate + 'T00:00:00')
+      const end   = new Date(selectedDate + 'T23:59:59')
+      return getHiveHistory(hiveId, 5000, start.toISOString(), end.toISOString())
+    },
+    enabled     : !!hiveId,
+    staleTime   : 30_000,
+    refetchInterval: 60_000,
+  })
 
   const isLoading = ll || lh
 
@@ -31,38 +53,37 @@ export function useHiveAnalytics(hiveId) {
   const bars      = rssiBars(rssi)
   const signalLabel = rssiToLabel(rssi)
 
-  // ── Filter history by selected date ───────────────────────────────────────
-  const filteredHistory = useMemo(() => {
-    if (!history?.length) return []
-    if (!selectedDate)    return history
-
-    // selectedDate is 'YYYY-MM-DD' — keep only rows from that calendar day
-    return history.filter(d => {
-      const rowDate = new Date(d.ts).toLocaleDateString('en-CA') // 'YYYY-MM-DD'
-      return rowDate === selectedDate
-    })
-  }, [history, selectedDate])
-
-  // ── Chart data from filtered history ──────────────────────────────────────
+  // ── Chart data ─────────────────────────────────────────────────────────────
   const chartData = useMemo(() =>
-    filteredHistory.map(d => {
+    (history ?? []).map(d => {
       const dt   = new Date(d.ts)
       const time = `${String(dt.getHours()).padStart(2,'0')}h.${String(dt.getMinutes()).padStart(2,'0')}min`
       return {
         time,
+        rawHour : dt.getHours() + dt.getMinutes() / 60,  // for interval calculation
         [METRIC_CONFIG.temperature.chartKey] : d.temperature_c != null ? +d.temperature_c.toFixed(1) : null,
         [METRIC_CONFIG.humidity.chartKey]    : d.humidity_pct  != null ? +d.humidity_pct.toFixed(1)  : null,
         [METRIC_CONFIG.sound.chartKey]       : d.sound_level   != null ? +(d.sound_level * 2).toFixed(0) : null,
       }
     }),
-    [filteredHistory]
+    [history]
   )
 
-  // ── Min/max from filtered history ─────────────────────────────────────────
+  // ── Smart X-axis: pick ~8 evenly spaced ticks ─────────────────────────────
+  const xAxisTicks = useMemo(() => {
+    if (chartData.length < 2) return undefined   // let recharts decide
+    const total    = chartData.length
+    const step     = Math.max(1, Math.round(total / 8))
+    return chartData
+      .filter((_, i) => i % step === 0 || i === total - 1)
+      .map(d => d.time)
+  }, [chartData])
+
+  // ── Min/max from history ───────────────────────────────────────────────────
   const metricRanges = useMemo(() => {
-    if (!filteredHistory.length) return { temp: null, humidity: null, sound: null }
+    if (!history?.length) return { temp: null, humidity: null, sound: null }
     const pick = (field, scale = v => v) => {
-      const vals = filteredHistory.map(d => d[field]).filter(v => v != null).map(scale)
+      const vals = (history ?? []).map(d => d[field]).filter(v => v != null).map(scale)
       return vals.length
         ? { min: Math.min(...vals).toFixed(1), max: Math.max(...vals).toFixed(1) }
         : null
@@ -72,32 +93,26 @@ export function useHiveAnalytics(hiveId) {
       humidity: pick('humidity_pct'),
       sound   : pick('sound_level', v => v * 2),
     }
-  }, [filteredHistory])
+  }, [history])
 
   // ── Excel export ───────────────────────────────────────────────────────────
   const exportExcel = () => {
-    if (!filteredHistory.length) return
+    if (!history?.length) return
 
-    // Build CSV rows (Excel opens CSV natively)
     const headers = ['Date/Heure', 'Température (°C)', 'Humidité (%)', 'Niveau Sonore (Hz)']
-    const rows = filteredHistory.map(d => [
+    const rows = (history ?? []).map(d => [
       new Date(d.ts).toLocaleString('fr-FR'),
       d.temperature_c?.toFixed(1) ?? '',
       d.humidity_pct?.toFixed(1)  ?? '',
       d.sound_level != null ? (d.sound_level * 2).toFixed(0) : '',
     ])
 
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${cell}"`).join(';'))
-      .join('\n')
-
-    // Add BOM for Excel to recognise UTF-8 correctly (é, è, etc.)
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const csv  = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(';')).join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
-    const date = selectedDate || new Date().toLocaleDateString('en-CA')
     a.href     = url
-    a.download = `IBEE_ruche_${hiveId}_${date}.csv`
+    a.download = `IBEE_ruche_${hiveId}_${selectedDate || 'all'}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -107,12 +122,10 @@ export function useHiveAnalytics(hiveId) {
     temp, humidity, sound, doorOpen, rssi, battPct, bars, signalLabel,
     metricRanges,
     chartData,
-    hasHistory        : filteredHistory.length > 0,
+    xAxisTicks,
+    hasHistory        : (history ?? []).length > 0,
     totalMeasurements : stats?.total_measurements ?? 0,
-    // Date filter
-    selectedDate,
-    setSelectedDate,
-    // Excel
+    selectedDate, setSelectedDate,
     exportExcel,
   }
 }
