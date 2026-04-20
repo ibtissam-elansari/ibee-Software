@@ -1,4 +1,3 @@
-# main.py
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -6,22 +5,20 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes_health   import router as health_router
-from app.api.routes_hives    import router as hives_router
-from app.api.routes_webhooks import router as webhooks_router
-from app.core.settings       import settings
-from app.db.engine           import create_db_and_tables
-from app.api.routes_auth import router as auth_router
+from app.api.routes_health        import router as health_router
+from app.api.routes_hives         import router as hives_router
+from app.api.routes_webhooks      import router as webhooks_router
+from app.core.settings            import settings
+from app.db.engine                import create_db_and_tables
+from app.api.routes_auth          import router as auth_router
 from app.api.routes_notifications import router as notifications_router
-from app.api.routes_alert_stats import router as alert_stats_router
+from app.api.routes_alert_stats   import router as alert_stats_router
+from app.api.routes_apiculteurs   import router as apiculteurs_router  # ← add
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     await create_db_and_tables()
     yield
-    # Shutdown — nothing to clean up for now
-
 
 app = FastAPI(
     title       = "IBEE Backend",
@@ -33,9 +30,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5174",   # Vite dev server
+        "http://localhost:5174",
         "http://127.0.0.1:5173",
-        "http://localhost:3000",   # CRA dev server (if used)
+        "http://localhost:3000",
     ],
     allow_credentials = True,
     allow_methods     = ["*"],
@@ -43,12 +40,12 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
-app.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
-app.include_router(hives_router,    prefix="/api",      tags=["api"])
-app.include_router(auth_router, prefix="/auth", tags=["auth"])
-app.include_router(notifications_router, prefix="/api", tags=["notifications"])
-app.include_router(alert_stats_router, prefix="/api", tags=["alert-stats"])
-
+app.include_router(webhooks_router,      prefix="/webhooks", tags=["webhooks"])
+app.include_router(hives_router,         prefix="/api",      tags=["api"])
+app.include_router(auth_router,          prefix="/auth",     tags=["auth"])
+app.include_router(notifications_router, prefix="/api",      tags=["notifications"])
+app.include_router(alert_stats_router,   prefix="/api",      tags=["alert-stats"])
+app.include_router(apiculteurs_router,   prefix="/api",      tags=["apiculteurs"])  # ← add
 
 @app.get("/", tags=["root"])
 async def root() -> dict:
