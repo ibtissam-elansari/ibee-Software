@@ -10,5 +10,10 @@ export const deleteHive  = (id)       => http.delete(`/api/hives/${id}`);
 
 // ── Hive data ────────────────────────────────────────────────────────────────
 export const getHiveLatest  = (id)           => http.get(`/api/hives/${id}/latest`).then(r => r.data);
-export const getHiveHistory = (id, limit=100)=> http.get(`/api/hives/${id}/history`, { params: { limit } }).then(r => r.data);
+export const getHiveHistory = (id, limit = 200, start = null, end = null) => {
+  const params = { limit }
+  if (start) params.start = start
+  if (end)   params.end   = end
+  return http.get(`/api/hives/${id}/history`, { params }).then(r => r.data)
+}
 export const getHiveStats   = (id)           => http.get(`/api/hives/${id}/stats`).then(r => r.data);
