@@ -58,3 +58,15 @@ class Measurement(SQLModel, table=True):
 
     rssi : Optional[int]   = None
     snr  : Optional[float] = None
+
+
+class ApiculteurProfile(SQLModel, table=True):
+    __tablename__ = "apiculteur_profile"
+    user_id            : int           = Field(primary_key=True, foreign_key="user.id")
+    company_name       : str           = Field(default="")
+    phone              : Optional[str] = Field(default=None)
+    region             : Optional[str] = Field(default=None)
+    city               : Optional[str] = Field(default=None)
+    address            : Optional[str] = Field(default=None)
+    initial_hive_count : int           = Field(default=0)
+    created_at         : datetime      = Field(default_factory=lambda: datetime.now(timezone.utc))
