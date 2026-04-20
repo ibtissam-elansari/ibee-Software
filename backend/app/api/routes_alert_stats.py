@@ -185,28 +185,22 @@ async def get_daily_alert_counts(
 
 @router.get("/alert-stats/weekly", response_model=list[WeeklyBarItem])
 async def get_weekly_urgent_counts(
+    start   : Optional[datetime] = Query(default=None),
+    end     : Optional[datetime] = Query(default=None),
     session : AsyncSession = Depends(get_session),
     current : dict         = Depends(get_current_user),
 ):
-    """
-    Count of URGENT alerts per weekday for the current week (Mon–Sun).
-    """
-    now   = datetime.now(timezone.utc)
-    # Start of current week (Monday)
-    start = now - timedelta(days=now.weekday())
-    start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+    now    = datetime.now(timezone.utc)
+    end_   = end   or now
+    start_ = start or (now - timedelta(days=7))
 
-    rows = await _fetch_alert_measurements(session, start, now)
+    rows = await _fetch_alert_measurements(session, start_, end_)
 
-    counts = [0] * 7   # index 0 = Monday
+    counts = [0] * 7
     for measurement, hive in rows:
         alerts = _build_alert_log(measurement, hive.name, hive.id)
         urgent = [a for a in alerts if a.importance == 'urgente']
         if urgent:
-            day_index = measurement.ts.weekday()   # 0=Mon, 6=Sun
-            counts[day_index] += len(urgent)
+            counts[measurement.ts.weekday()] += len(urgent)
 
-    return [
-        WeeklyBarItem(day=DAY_LABELS[i], count=counts[i])
-        for i in range(7)
-    ]
+    return [WeeklyBarItem(day=DAY_LABELS[i], count=counts[i]) for i in range(7)]
