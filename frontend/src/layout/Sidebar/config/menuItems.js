@@ -19,6 +19,12 @@ const menuItems = [
   //   roles : ['admin', 'superuser'],    // both can manage users
   // },
   {
+    label : 'Statistique des alertes',
+    icon  : 'ChartLine',
+    href  : '/statistique-alertes',
+    roles : ['user', 'admin', 'superuser'],
+  },
+  {
     label : 'Paramètres',
     icon  : 'Settings',
     href  : '/parametres',
