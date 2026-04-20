@@ -6,5 +6,5 @@ export const getAlertLog = (params = {}) =>
 export const getDailyAlertCounts = (params = {}) =>
   http.get('/api/alert-stats/daily', { params }).then(r => r.data)
 
-export const getWeeklyUrgentCounts = () =>
-  http.get('/api/alert-stats/weekly').then(r => r.data)
+export const getWeeklyUrgentCounts = (start, end) =>
+  http.get('/api/alert-stats/weekly', { params: { start, end } }).then(r => r.data)
