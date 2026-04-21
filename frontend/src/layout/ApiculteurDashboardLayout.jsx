@@ -1,84 +1,124 @@
 import React from 'react';
-import { useNavigate, useParams, Outlet } from 'react-router';
-import { ChevronLeft, LayoutDashboard, ChevronDown } from 'lucide-react';
-import { NavLink } from 'react-router';
+import { NavLink, useNavigate, useParams, Outlet } from 'react-router';
+import { ChevronLeft, LayoutDashboard, BarChart2, Settings } from 'lucide-react';
+import { useApiculteur } from '../hooks/useApiculteurs';
+import useAuthStore from '../store/useAuthStore';
 
 const ApiculteurDashboardLayout = () => {
-  const navigate   = useNavigate();
-  const { userId } = useParams();
+  const navigate         = useNavigate();
+  const { apiculteurId } = useParams();
+  const role             = useAuthStore(s => s.user?.role ?? s.role);
+  const isSuperuser      = role === 'superuser';
+
+  const { data: apiculteur, isLoading } = useApiculteur(apiculteurId);
+
+  const base = `/apiculteurs/${apiculteurId}`;
+
+  const navItems = [
+    { path: `${base}/dashboard`,             label: 'Dashboard',            Icon: LayoutDashboard },
+    { path: `${base}/gestion`,               label: 'Gestion des ruches',   Icon: ({ className }) => (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M12 2L3 7v10l9 5 9-5V7L12 2z"/>
+        </svg>
+      )
+    },
+    { path: `${base}/statistique-alertes`,   label: 'Statistiques alertes', Icon: BarChart2 },
+    // Settings only for user/admin (they manage their own coop settings)
+    ...(!isSuperuser ? [{ path: `${base}/parametres`, label: 'Paramètres', Icon: Settings }] : []),
+  ];
 
   return (
-    <div className="min-h-screen bg-base-200">
+    <div className="flex h-screen overflow-hidden" style={{ background: '#FDFAF4' }}>
 
-      {/* ── Left sidebar ── */}
-      <aside className="fixed left-2 top-2 bottom-2 w-64 bg-base-100 rounded-box
-                        shadow-sm z-20 flex flex-col">
+      {/* ── Sidebar ── */}
+      <aside className="w-64 flex-shrink-0 m-2 bg-white rounded-2xl border border-gray-100
+                        shadow-sm flex flex-col">
 
-        {/* IBEE Logo */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-base-200">
-          <div className="w-9 h-9 rounded-lg bg-[#F5A623] flex items-center justify-center">
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
+          <div className="w-9 h-9 rounded-xl bg-[#F5A623] flex items-center justify-center">
             <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
               <path d="M11 2L15.5 4.75V10.25L11 13L6.5 10.25V4.75L11 2Z" fill="white" opacity="0.9"/>
               <circle cx="11" cy="7.5" r="2.2" fill="#F5A623"/>
             </svg>
           </div>
-          <span className="text-lg font-bold text-base-content">IBEE</span>
+          <span className="text-lg font-bold text-gray-900">IBEE</span>
         </div>
 
-        {/* Retour button — matches Figma exactly */}
-        <div className="px-3 pt-4">
-          <button
-            onClick={() => navigate('/apiculteurs')}
-            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl
-                       border border-amber-200 text-amber-600 text-sm font-medium
-                       hover:bg-amber-50 transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4 flex-shrink-0" />
-            Retour au super compte
-          </button>
+        {/* Back button — superuser only */}
+        {isSuperuser && (
+          <div className="px-3 pt-4">
+            <button
+              onClick={() => navigate('/apiculteurs')}
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl
+                         border border-amber-200 text-amber-600 text-sm font-medium
+                         hover:bg-amber-50 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4 flex-shrink-0" />
+              Retour au super compte
+            </button>
+          </div>
+        )}
+
+        {/* Cooperative badge */}
+        <div className="mx-3 mt-3 px-3 py-2 rounded-xl bg-amber-50 border border-amber-100">
+          <p className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider">
+            Coopérative
+          </p>
+          <p className="text-sm font-bold text-gray-800 mt-0.5 truncate">
+            {isLoading ? '…' : (apiculteur?.company_name ?? '—')}
+          </p>
         </div>
 
-        {/* Nav items */}
+        {/* Nav */}
         <nav className="flex-1 px-3 py-3 overflow-y-auto">
           <ul className="space-y-1">
-            <li>
-              <NavLink
-                to={`/apiculteurs/${userId}/dashboard`}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                   transition-colors
-                   ${isActive ? 'bg-[#331F15] text-white' : 'text-base-content hover:bg-base-200'}`
-                }
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                Dashboard
-              </NavLink>
-            </li>
-            <li>
-              <NavLink
-                to={`/apiculteurs/${userId}/hives`}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                   transition-colors
-                   ${isActive ? 'bg-[#331F15] text-white' : 'text-base-content hover:bg-base-200'}`
-                }
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" strokeWidth="1.5">
-                  <path d="M12 2L3 7v10l9 5 9-5V7L12 2z"/>
-                </svg>
-                Gestion des ruches
-                <ChevronDown className="w-3.5 h-3.5 ml-auto" />
-              </NavLink>
-            </li>
+            {navItems.map(({ path, label, Icon }) => (
+              <li key={path}>
+                <NavLink
+                  to={path}
+                  end={path.endsWith('dashboard')}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                     transition-colors
+                     ${isActive
+                       ? 'bg-[#1C0A00] text-white'
+                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                     }`
+                  }
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  {label}
+                </NavLink>
+              </li>
+            ))}
           </ul>
         </nav>
+
+        {/* Logout — for user/admin */}
+        {!isSuperuser && (
+          <div className="px-3 pb-4">
+            <button
+              onClick={() => {
+                useAuthStore.getState().logout();
+                navigate('/login', { replace: true });
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm
+                         font-medium text-red-400 hover:bg-red-50 transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+              </svg>
+              Déconnexion
+            </button>
+          </div>
+        )}
       </aside>
 
-      {/* ── Main content — full width (no right panel) ── */}
-      <main className="fixed top-2 bottom-2 left-[17rem] right-2 overflow-y-auto
-                       bg-base-100 shadow-sm rounded-box">
-        <Outlet />
+      {/* ── Main content ── */}
+      <main className="flex-1 m-2 ml-0 bg-white rounded-2xl border border-gray-100
+                       shadow-sm overflow-y-auto">
+        <Outlet context={{ apiculteurId, apiculteur }} />
       </main>
     </div>
   );
