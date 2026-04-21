@@ -5,7 +5,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, Integer
 from pydantic import BaseModel
 
 from app.db.engine import get_session
@@ -57,10 +57,10 @@ async def _hive_counts(session: AsyncSession, apiculteur_id: int) -> dict:
     r = await session.execute(
         select(
             func.count(Hive.id).label("total"),
-            func.sum(Hive.is_active.cast(int)).label("active"),
+            func.sum(Hive.is_active.cast(Integer)).label("active"),
         )
         .where(Hive.apiculteur_id == apiculteur_id)
-        .where(Hive.deleted_at == None)
+        .where(Hive.deleted_at.is_(None))
     )
     row = r.one()
     total  = row.total  or 0
