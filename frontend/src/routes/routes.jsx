@@ -9,7 +9,6 @@ import useAuthStore              from '../store/useAuthStore';
 
 // Pages
 import AuthPage          from '../pages/Auth/AuthPage';
-import HomePage          from '../pages/Home/HomePage';
 import GestionPage       from '../pages/Gestion/GestionPage';
 import HiveAnalyticsPage from '../pages/Analytics/HiveAnalyticsPage';
 import MetricDetailPage  from '../pages/Analytics/MetricDetailPage';
@@ -17,27 +16,33 @@ import AlertStatsPage    from '../pages/AlertStats/AlertStatsPage';
 import SettingsPage      from '../pages/Settings/SettingsPage';
 import ApiculteursPage   from '../pages/Apiculteurs/ApiculteursPage';
 
-// Apiculteur-scoped sub-pages
-import HivesField  from '../pages/Home/Hives/HivesField';
-import StatusField from '../pages/Home/Cards/StatusField';
+// Scoped cooperative pages
+import ApiculteurHomePage    from '../pages/Apiculteurs/scoped/ApiculteurHomePage';
+import ApiculteurGestionPage from '../pages/Apiculteurs/scoped/ApiculteurGestionPage';
 
-const ApiculteurHomePage = () => (
-  <div className="flex flex-col gap-4 p-6">
-    <StatusField />
-    <HivesField />
-  </div>
-);
-
-// Redirects superuser → /apiculteurs, everyone else → /dashboard
+/**
+ * Smart root redirect:
+ * - superuser              → /apiculteurs          (manage all coops)
+ * - user/admin with coop   → /apiculteurs/:id/dashboard  (their coop's dashboard)
+ * - user/admin without coop → /dashboard           (fallback, shouldn't happen)
+ */
 const RootRedirect = () => {
-  const role = useAuthStore(s => s.user?.role ?? s.role ?? null);
-  if (role === 'superuser') return <Navigate to="/apiculteurs" replace />;
-  return <Navigate to="/dashboard" replace />;
+  const user = useAuthStore(s => s.user);
+  const role = user?.role ?? useAuthStore.getState().role;
+
+  if (role === 'superuser') {
+    return <Navigate to="/apiculteurs" replace />;
+  }
+  if (user?.apiculteur_id) {
+    return <Navigate to={`/apiculteurs/${user.apiculteur_id}/dashboard`} replace />;
+  }
+  // Fallback — user exists but has no coop assigned yet
+  return <Navigate to="/no-coop" replace />;
 };
 
 export const router = createBrowserRouter([
 
-  // ── Auth (no sidebar) ─────────────────────────────────────────────────────
+  // ── Auth ──────────────────────────────────────────────────────────────────
   {
     element : <AuthLayout />,
     children: [
@@ -45,25 +50,7 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── User & Admin (with main sidebar) ──────────────────────────────────────
-  {
-    element : <ProtectedRoute allowedRoles={['user', 'admin']} />,
-    children: [
-      {
-        element : <DashboardLayout />,
-        children: [
-          { path: '/dashboard',                          element: <HomePage /> },
-          { path: '/gestion',                            element: <GestionPage /> },
-          { path: '/gestion/:hiveId',                    element: <HiveAnalyticsPage /> },
-          { path: '/gestion/:hiveId/details/:metric',    element: <MetricDetailPage /> },
-          { path: '/statistique-alertes',                element: <AlertStatsPage /> },
-          { path: '/parametres',                         element: <SettingsPage /> },
-        ],
-      },
-    ],
-  },
-
-  // ── Superuser (with main sidebar) ─────────────────────────────────────────
+  // ── Superuser — manages all cooperatives ──────────────────────────────────
   {
     element : <ProtectedRoute allowedRoles={['superuser']} />,
     children: [
@@ -77,21 +64,62 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Scoped apiculteur view (superuser viewing a client) ───────────────────
+  // ── User & Admin — scoped to their cooperative ────────────────────────────
+  // They land on /apiculteurs/:apiculteurId/* just like superuser's scoped view,
+  // but ProtectedRoute ensures only their own coop ID works.
   {
-    element : <ProtectedRoute allowedRoles={['superuser']} />,
+    element : <ProtectedRoute allowedRoles={['user', 'admin']} />,
     children: [
       {
-        element : <ApiculteurDashboardLayout />,
+        path   : '/apiculteurs/:apiculteurId',
+        element: <ApiculteurDashboardLayout />,
         children: [
-          { path: '/apiculteurs/:userId/dashboard', element: <ApiculteurHomePage /> },
-          { path: '/apiculteurs/:userId/hives',     element: <GestionPage /> },
+          { path: 'dashboard',                       element: <ApiculteurHomePage /> },
+          { path: 'gestion',                         element: <ApiculteurGestionPage /> },
+          { path: 'gestion/:hiveId',                 element: <HiveAnalyticsPage /> },
+          { path: 'gestion/:hiveId/details/:metric', element: <MetricDetailPage /> },
+          { path: 'statistique-alertes',             element: <AlertStatsPage /> },
+          { path: 'parametres',                      element: <SettingsPage /> },
         ],
       },
     ],
   },
 
-  // ── Root + fallback — redirect based on role ──────────────────────────────
+  // ── Superuser scoped view (drills into a coop's dashboard) ────────────────
+  {
+    element : <ProtectedRoute allowedRoles={['superuser']} />,
+    children: [
+      {
+        path   : '/apiculteurs/:apiculteurId',
+        element: <ApiculteurDashboardLayout />,
+        children: [
+          { path: 'dashboard',                       element: <ApiculteurHomePage /> },
+          { path: 'gestion',                         element: <ApiculteurGestionPage /> },
+          { path: 'gestion/:hiveId',                 element: <HiveAnalyticsPage /> },
+          { path: 'gestion/:hiveId/details/:metric', element: <MetricDetailPage /> },
+          { path: 'statistique-alertes',             element: <AlertStatsPage /> },
+        ],
+      },
+    ],
+  },
+
+  // ── No coop assigned (edge case) ──────────────────────────────────────────
+  {
+    path   : '/no-coop',
+    element: (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-2xl border border-gray-100 shadow-sm max-w-sm">
+          <p className="text-lg font-bold text-gray-900 mb-2">Compte non configuré</p>
+          <p className="text-sm text-gray-400">
+            Votre compte n'est pas encore associé à une coopérative.
+            Contactez votre administrateur.
+          </p>
+        </div>
+      </div>
+    ),
+  },
+
+  // ── Root + fallback ───────────────────────────────────────────────────────
   { path: '/',  element: <RootRedirect /> },
   { path: '*',  element: <RootRedirect /> },
 ]);
