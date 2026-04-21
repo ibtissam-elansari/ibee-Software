@@ -32,6 +32,7 @@ class HiveOut(BaseModel):
     id            : int
     name          : str
     location_name : Optional[str] = None
+    apiculteur_id : Optional[int]
     created_at    : datetime
     is_active     : bool
     deleted_at    : Optional[datetime]

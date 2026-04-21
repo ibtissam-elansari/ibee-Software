@@ -25,13 +25,13 @@ class User(SQLModel, table=True):
 
 
 class Hive(SQLModel, table=True):
-    id            : Optional[int] = Field(default=None, primary_key=True)
-    name          : str           = Field(index=True)
-    location_name : Optional[str] = Field(default=None)
-    created_at    : datetime      = Field(default_factory=_utcnow, index=True)
-
-    is_active     : bool          = Field(default=True, index=True)
-    deleted_at    : Optional[datetime] = Field(default=None, index=True)
+    id            : Optional[int]      = Field(default=None, primary_key=True)
+    name          : str                = Field(index=True)
+    location_name : Optional[str]      = Field(default=None)
+    apiculteur_id : Optional[int]      = Field(default=None, foreign_key="apiculteur.id", index=True)
+    is_active     : bool               = Field(default=True)
+    created_at    : datetime           = Field(default_factory=_utcnow, index=True)
+    deleted_at    : Optional[datetime] = Field(default=None)
 
 class Device(SQLModel, table=True):
     id           : Optional[int]      = Field(default=None, primary_key=True)
@@ -60,13 +60,20 @@ class Measurement(SQLModel, table=True):
     snr  : Optional[float] = None
 
 
-class ApiculteurProfile(SQLModel, table=True):
-    __tablename__ = "apiculteur_profile"
-    user_id            : int           = Field(primary_key=True, foreign_key="user.id")
-    company_name       : str           = Field(default="")
-    phone              : Optional[str] = Field(default=None)
-    region             : Optional[str] = Field(default=None)
-    city               : Optional[str] = Field(default=None)
-    address            : Optional[str] = Field(default=None)
-    initial_hive_count : int           = Field(default=0)
-    created_at         : datetime      = Field(default_factory=lambda: datetime.now(timezone.utc))
+class Apiculteur(SQLModel, table=True):
+    """
+    A client enterprise (beekeeping cooperation) managed by AGRI4.0.
+    This is NOT a User — it's a separate entity.
+    """
+    __tablename__ = "apiculteur"
+ 
+    id           : Optional[int] = Field(default=None, primary_key=True)
+    company_name : str
+    email        : Optional[str]  = Field(default=None, index=True)
+    phone        : Optional[str]  = Field(default=None)
+    region       : Optional[str]  = Field(default=None)
+    city         : Optional[str]  = Field(default=None)
+    address      : Optional[str]  = Field(default=None)
+    is_active    : bool           = Field(default=True)
+    created_at   : datetime       = Field(default_factory=_utcnow, index=True)
+ 

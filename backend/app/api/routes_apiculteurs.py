@@ -1,214 +1,221 @@
 # /backend/app/api/routes_apiculteurs.py
 from __future__ import annotations
-
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from pydantic import BaseModel
-from sqlmodel import Field, SQLModel
 
 from app.db.engine import get_session
-from app.models.models import User, UserRole, Device, Hive, Measurement
-from app.core.dependencies import require_role
+from app.models.models import Apiculteur, Hive, Device, Measurement
+from app.core.dependencies import get_current_user, require_role
 
 router = APIRouter()
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
-class ApiculteurProfileCreate(BaseModel):
-    email        : str
-    password     : str
+class ApiculteurCreate(BaseModel):
     company_name : str
-    phone        : Optional[str] = None
-    region       : Optional[str] = None
-    city         : Optional[str] = None
-    address      : Optional[str] = None
-    initial_hive_count: int = 0
-
-class ApiculteurProfileUpdate(BaseModel):
-    company_name : Optional[str] = None
-    phone        : Optional[str] = None
-    region       : Optional[str] = None
-    city         : Optional[str] = None
-    address      : Optional[str] = None
-    initial_hive_count: Optional[int] = None
     email        : Optional[str] = None
+    phone        : Optional[str] = None
+    region       : Optional[str] = None
+    city         : Optional[str] = None
+    address      : Optional[str] = None
+
+class ApiculteurUpdate(BaseModel):
+    company_name : Optional[str]  = None
+    email        : Optional[str]  = None
+    phone        : Optional[str]  = None
+    region       : Optional[str]  = None
+    city         : Optional[str]  = None
+    address      : Optional[str]  = None
+    is_active    : Optional[bool] = None
 
 class ApiculteurOut(BaseModel):
-    user_id      : int
-    email        : str
-    company_name : str
-    phone        : Optional[str]
-    region       : Optional[str]
-    city         : Optional[str]
-    address      : Optional[str]
-    initial_hive_count: int
-    created_at   : datetime
-    active_hives : int = 0
+    id            : int
+    company_name  : str
+    email         : Optional[str]
+    phone         : Optional[str]
+    region        : Optional[str]
+    city          : Optional[str]
+    address       : Optional[str]
+    is_active     : bool
+    created_at    : datetime
+    active_hives  : int = 0
     inactive_hives: int = 0
-    total_hives  : int = 0
-
+    total_hives   : int = 0
     class Config:
         from_attributes = True
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+# ── Hive count helper ─────────────────────────────────────────────────────────
+
+async def _hive_counts(session: AsyncSession, apiculteur_id: int) -> dict:
+    r = await session.execute(
+        select(
+            func.count(Hive.id).label("total"),
+            func.sum(Hive.is_active.cast(int)).label("active"),
+        )
+        .where(Hive.apiculteur_id == apiculteur_id)
+        .where(Hive.deleted_at == None)
+    )
+    row = r.one()
+    total  = row.total  or 0
+    active = int(row.active or 0)
+    return {"total_hives": total, "active_hives": active, "inactive_hives": total - active}
+
+
+# ── CRUD ──────────────────────────────────────────────────────────────────────
 
 @router.get("/apiculteurs", response_model=list[ApiculteurOut])
 async def list_apiculteurs(
-    session : AsyncSession = Depends(get_session),
-    current : dict         = Depends(require_role("superuser")),
+    session: AsyncSession = Depends(get_session),
+    current: dict         = Depends(get_current_user),
 ):
-    """
-    Returns all users with role=user, joined with their profiles and hive counts.
-    Only accessible by superuser.
-    """
-    from app.models.models import ApiculteurProfile  # noqa
-
-    result = await session.execute(
-        select(User, ApiculteurProfile)
-        .outerjoin(ApiculteurProfile, ApiculteurProfile.user_id == User.id)
-        .where(User.role == UserRole.USER)
-        .order_by(User.created_at.desc())
-    )
-    rows = result.all()
+    rows = (await session.execute(
+        select(Apiculteur).order_by(Apiculteur.created_at.desc())
+    )).scalars().all()
 
     out = []
-    for user, profile in rows:
-        # Count hives per user
-        hive_result = await session.execute(
-            select(Hive)
-            .join(Device, Device.hive_id == Hive.id)
-            .where(Device.dev_eui.in_(
-                select(Device.dev_eui).where(Device.hive_id != None)
-            ))
-        )
-        # Simple count via hive ownership — adjust if you add user_id to Hive
-        total    = 0
-        active   = 0
-        inactive = 0
-
+    for a in rows:
+        counts = await _hive_counts(session, a.id)
         out.append(ApiculteurOut(
-            user_id           = user.id,
-            email             = user.email,
-            company_name      = profile.company_name if profile else user.email.split('@')[0],
-            phone             = profile.phone        if profile else None,
-            region            = profile.region       if profile else None,
-            city              = profile.city         if profile else None,
-            address           = profile.address      if profile else None,
-            initial_hive_count= profile.initial_hive_count if profile else 0,
-            created_at        = user.created_at,
-            active_hives      = active,
-            inactive_hives    = inactive,
-            total_hives       = total,
+            id=a.id, company_name=a.company_name, email=a.email,
+            phone=a.phone, region=a.region, city=a.city,
+            address=a.address, is_active=a.is_active, created_at=a.created_at,
+            **counts,
         ))
-
     return out
+
+
+@router.get("/apiculteurs/{apiculteur_id}", response_model=ApiculteurOut)
+async def get_apiculteur(
+    apiculteur_id: int,
+    session: AsyncSession = Depends(get_session),
+    current: dict         = Depends(get_current_user),
+):
+    a = (await session.execute(
+        select(Apiculteur).where(Apiculteur.id == apiculteur_id)
+    )).scalars().first()
+    if not a:
+        raise HTTPException(status_code=404, detail="Apiculteur introuvable")
+    counts = await _hive_counts(session, a.id)
+    return ApiculteurOut(
+        id=a.id, company_name=a.company_name, email=a.email,
+        phone=a.phone, region=a.region, city=a.city,
+        address=a.address, is_active=a.is_active, created_at=a.created_at, **counts,
+    )
 
 
 @router.post("/apiculteurs", response_model=ApiculteurOut, status_code=201)
 async def create_apiculteur(
-    payload : ApiculteurProfileCreate,
-    session : AsyncSession = Depends(get_session),
-    current : dict         = Depends(require_role("superuser")),
+    payload: ApiculteurCreate,
+    session: AsyncSession = Depends(get_session),
+    current: dict         = Depends(require_role("superuser")),
 ):
-    from app.models.models import ApiculteurProfile
-    from app.core.security import hash_password
-
-    existing = await session.execute(select(User).where(User.email == payload.email))
-    if existing.scalars().first():
-        raise HTTPException(status_code=400, detail="Email déjà utilisé")
-
-    user = User(
-        email           = payload.email,
-        hashed_password = hash_password(payload.password),
-        role            = UserRole.USER,
-    )
-    session.add(user)
-    await session.flush()  # get user.id
-
-    profile = ApiculteurProfile(
-        user_id            = user.id,
-        company_name       = payload.company_name,
-        phone              = payload.phone,
-        region             = payload.region,
-        city               = payload.city,
-        address            = payload.address,
-        initial_hive_count = payload.initial_hive_count,
-    )
-    session.add(profile)
+    a = Apiculteur(**payload.model_dump())
+    session.add(a)
     await session.commit()
-    await session.refresh(user)
-    await session.refresh(profile)
-
+    await session.refresh(a)
     return ApiculteurOut(
-        user_id=user.id, email=user.email,
-        company_name=profile.company_name, phone=profile.phone,
-        region=profile.region, city=profile.city,
-        address=profile.address, initial_hive_count=profile.initial_hive_count,
-        created_at=user.created_at, active_hives=0, inactive_hives=0, total_hives=0,
+        id=a.id, company_name=a.company_name, email=a.email,
+        phone=a.phone, region=a.region, city=a.city,
+        address=a.address, is_active=a.is_active, created_at=a.created_at,
+        active_hives=0, inactive_hives=0, total_hives=0,
     )
 
 
-@router.patch("/apiculteurs/{user_id}", response_model=ApiculteurOut)
+@router.patch("/apiculteurs/{apiculteur_id}", response_model=ApiculteurOut)
 async def update_apiculteur(
-    user_id : int,
-    payload : ApiculteurProfileUpdate,
-    session : AsyncSession = Depends(get_session),
-    current : dict         = Depends(require_role("superuser")),
+    apiculteur_id: int,
+    payload: ApiculteurUpdate,
+    session: AsyncSession = Depends(get_session),
+    current: dict         = Depends(require_role("superuser")),
 ):
-    from app.models.models import ApiculteurProfile
-
-    user_result = await session.execute(select(User).where(User.id == user_id))
-    user = user_result.scalars().first()
-    if not user:
+    a = (await session.execute(
+        select(Apiculteur).where(Apiculteur.id == apiculteur_id)
+    )).scalars().first()
+    if not a:
         raise HTTPException(status_code=404, detail="Apiculteur introuvable")
-
-    prof_result = await session.execute(
-        select(ApiculteurProfile).where(ApiculteurProfile.user_id == user_id)
-    )
-    profile = prof_result.scalars().first()
-    if not profile:
-        profile = ApiculteurProfile(user_id=user_id)
-        session.add(profile)
-
-    if payload.email:        user.email               = payload.email
-    if payload.company_name: profile.company_name     = payload.company_name
-    if payload.phone:        profile.phone            = payload.phone
-    if payload.region:       profile.region           = payload.region
-    if payload.city:         profile.city             = payload.city
-    if payload.address:      profile.address          = payload.address
-    if payload.initial_hive_count is not None:
-        profile.initial_hive_count = payload.initial_hive_count
-
-    session.add(user)
-    session.add(profile)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(a, field, value)
+    session.add(a)
     await session.commit()
-    await session.refresh(user)
-    await session.refresh(profile)
-
+    await session.refresh(a)
+    counts = await _hive_counts(session, a.id)
     return ApiculteurOut(
-        user_id=user.id, email=user.email,
-        company_name=profile.company_name, phone=profile.phone,
-        region=profile.region, city=profile.city, address=profile.address,
-        initial_hive_count=profile.initial_hive_count,
-        created_at=user.created_at, active_hives=0, inactive_hives=0, total_hives=0,
+        id=a.id, company_name=a.company_name, email=a.email,
+        phone=a.phone, region=a.region, city=a.city,
+        address=a.address, is_active=a.is_active, created_at=a.created_at, **counts,
     )
 
 
-@router.delete("/apiculteurs/{user_id}", status_code=204)
+@router.delete("/apiculteurs/{apiculteur_id}", status_code=204)
 async def delete_apiculteur(
-    user_id : int,
-    session : AsyncSession = Depends(get_session),
-    current : dict         = Depends(require_role("superuser")),
+    apiculteur_id: int,
+    session: AsyncSession = Depends(get_session),
+    current: dict         = Depends(require_role("superuser")),
 ):
-    user_result = await session.execute(select(User).where(User.id == user_id))
-    user = user_result.scalars().first()
-    if not user:
+    a = (await session.execute(
+        select(Apiculteur).where(Apiculteur.id == apiculteur_id)
+    )).scalars().first()
+    if not a:
         raise HTTPException(status_code=404, detail="Apiculteur introuvable")
-    await session.delete(user)
+    await session.delete(a)
     await session.commit()
+
+
+# ── Scoped hives ──────────────────────────────────────────────────────────────
+
+@router.get("/apiculteurs/{apiculteur_id}/hives")
+async def get_apiculteur_hives(
+    apiculteur_id: int,
+    session: AsyncSession = Depends(get_session),
+    current: dict         = Depends(get_current_user),
+):
+    """Hives belonging to one apiculteur — used by the scoped dashboard."""
+    rows = (await session.execute(
+        select(Hive)
+        .where(Hive.apiculteur_id == apiculteur_id)
+        .where(Hive.deleted_at == None)
+        .order_by(Hive.created_at)
+    )).scalars().all()
+    return rows
+
+
+# ── Scoped notifications ──────────────────────────────────────────────────────
+
+@router.get("/apiculteurs/{apiculteur_id}/notifications")
+async def get_apiculteur_notifications(
+    apiculteur_id: int,
+    session: AsyncSession = Depends(get_session),
+    current: dict         = Depends(get_current_user),
+):
+    """Notifications derived from this apiculteur's hives only."""
+    from app.api.routes_notifications import _build_notifications
+
+    latest_ids_subq = (
+        select(func.max(Measurement.id).label("max_id"))
+        .join(Device, Device.id == Measurement.device_id)
+        .join(Hive,   Hive.id   == Device.hive_id)
+        .where(Hive.apiculteur_id == apiculteur_id)
+        .group_by(Device.hive_id)
+        .scalar_subquery()
+    )
+
+    rows = (await session.execute(
+        select(Measurement, Hive)
+        .join(Device, Device.id == Measurement.device_id)
+        .join(Hive,   Hive.id   == Device.hive_id)
+        .where(Measurement.id.in_(latest_ids_subq))
+        .order_by(Measurement.ts.desc())
+    )).all()
+
+    notifications = []
+    for measurement, hive in rows:
+        notifications.extend(_build_notifications(measurement, hive.name, hive.id))
+    notifications.sort(key=lambda n: n.ts, reverse=True)
+    return notifications
