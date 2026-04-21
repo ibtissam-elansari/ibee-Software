@@ -5,39 +5,49 @@ const decodeToken = (token) => {
   catch { return null; }
 };
 
-const storedToken = localStorage.getItem('access_token');
-const decoded     = storedToken ? decodeToken(storedToken) : null;
+const storedToken   = localStorage.getItem('access_token');
+const decoded       = storedToken ? decodeToken(storedToken) : null;
 
-// Reconstruct a user object from whatever is stored/decoded
-const initialUser = decoded
-  ? { role: decoded.role ?? null, email: decoded.sub ?? null, id: decoded.user_id ?? null }
-  : null;
+const initialUser = decoded ? {
+  id           : decoded.user_id       ?? null,
+  role         : decoded.role          ?? null,
+  email        : decoded.sub           ?? null,
+  apiculteur_id: decoded.apiculteur_id ?? null,
+} : null;
 
 const useAuthStore = create((set) => ({
-  token  : storedToken || null,
-  role   : decoded?.role    || null,   // keep for legacy selectors
-  email  : decoded?.sub     || null,   // keep for legacy selectors
-  userId : decoded?.user_id || null,
-  user   : initialUser,                // ← single source of truth for components
+  token        : storedToken  || null,
+  role         : decoded?.role          || null,
+  email        : decoded?.sub           || null,
+  userId       : decoded?.user_id       || null,
+  apiculteurId : decoded?.apiculteur_id || null,
+  user         : initialUser,
 
-  setAuth: ({ access_token, role, email, user_id }) => {
+  setAuth: ({ access_token, role, email, user_id, apiculteur_id }) => {
     localStorage.setItem('access_token', access_token);
-    const user = { id: user_id, role, email };
-    set({ token: access_token, role, email, userId: user_id, user });
+    const user = { id: user_id, role, email, apiculteur_id: apiculteur_id ?? null };
+    set({
+      token        : access_token,
+      role,
+      email,
+      userId       : user_id,
+      apiculteurId : apiculteur_id ?? null,
+      user,
+    });
   },
 
-  // Called after a profile update to keep the store in sync
   setUser: (updatedUser) => {
     set(s => ({
-      user  : { ...s.user, ...updatedUser },
-      email : updatedUser.email ?? s.email,
-      role  : updatedUser.role  ?? s.role,
+      user         : { ...s.user, ...updatedUser },
+      email        : updatedUser.email          ?? s.email,
+      role         : updatedUser.role           ?? s.role,
+      apiculteurId : updatedUser.apiculteur_id  ?? s.apiculteurId,
     }));
   },
 
   logout: () => {
     localStorage.removeItem('access_token');
-    set({ token: null, role: null, email: null, userId: null, user: null });
+    set({ token: null, role: null, email: null, userId: null, apiculteurId: null, user: null });
   },
 }));
 
