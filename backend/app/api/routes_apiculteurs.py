@@ -1,5 +1,74 @@
-# Replace the three GET handlers with these scoped versions.
-# POST / PATCH / DELETE stay superuser-only as before.
+# /backend/app/api/routes_apiculteurs.py
+from __future__ import annotations
+from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, Integer
+from pydantic import BaseModel
+
+from app.db.engine import get_session
+from app.models.models import Apiculteur, Hive, Device, Measurement
+from app.core.dependencies import get_current_user, require_role
+
+router = APIRouter()
+
+
+# ── Schemas ───────────────────────────────────────────────────────────────────
+
+class ApiculteurCreate(BaseModel):
+    company_name : str
+    email        : Optional[str] = None
+    phone        : Optional[str] = None
+    region       : Optional[str] = None
+    city         : Optional[str] = None
+    address      : Optional[str] = None
+
+class ApiculteurUpdate(BaseModel):
+    company_name : Optional[str]  = None
+    email        : Optional[str]  = None
+    phone        : Optional[str]  = None
+    region       : Optional[str]  = None
+    city         : Optional[str]  = None
+    address      : Optional[str]  = None
+    is_active    : Optional[bool] = None
+
+class ApiculteurOut(BaseModel):
+    id            : int
+    company_name  : str
+    email         : Optional[str]
+    phone         : Optional[str]
+    region        : Optional[str]
+    city          : Optional[str]
+    address       : Optional[str]
+    is_active     : bool
+    created_at    : datetime
+    active_hives  : int = 0
+    inactive_hives: int = 0
+    total_hives   : int = 0
+    class Config:
+        from_attributes = True
+
+
+# ── Hive count helper ─────────────────────────────────────────────────────────
+
+async def _hive_counts(session: AsyncSession, apiculteur_id: int) -> dict:
+    r = await session.execute(
+        select(
+            func.count(Hive.id).label("total"),
+            func.sum(Hive.is_active.cast(Integer)).label("active"),
+        )
+        .where(Hive.apiculteur_id == apiculteur_id)
+        .where(Hive.deleted_at.is_(None))
+    )
+    row = r.one()
+    total  = row.total  or 0
+    active = int(row.active or 0)
+    return {"total_hives": total, "active_hives": active, "inactive_hives": total - active}
+
+
+# ── CRUD ──────────────────────────────────────────────────────────────────────
 
 @router.get("/apiculteurs", response_model=list[ApiculteurOut])
 async def list_apiculteurs(
@@ -61,6 +130,67 @@ async def get_apiculteur(
     )
 
 
+
+@router.post("/apiculteurs", response_model=ApiculteurOut, status_code=201)
+async def create_apiculteur(
+    payload: ApiculteurCreate,
+    session: AsyncSession = Depends(get_session),
+    current: dict         = Depends(require_role("superuser")),
+):
+    a = Apiculteur(**payload.model_dump())
+    session.add(a)
+    await session.commit()
+    await session.refresh(a)
+    return ApiculteurOut(
+        id=a.id, company_name=a.company_name, email=a.email,
+        phone=a.phone, region=a.region, city=a.city,
+        address=a.address, is_active=a.is_active, created_at=a.created_at,
+        active_hives=0, inactive_hives=0, total_hives=0,
+    )
+
+
+@router.patch("/apiculteurs/{apiculteur_id}", response_model=ApiculteurOut)
+async def update_apiculteur(
+    apiculteur_id: int,
+    payload: ApiculteurUpdate,
+    session: AsyncSession = Depends(get_session),
+    current: dict         = Depends(require_role("superuser")),
+):
+    a = (await session.execute(
+        select(Apiculteur).where(Apiculteur.id == apiculteur_id)
+    )).scalars().first()
+    if not a:
+        raise HTTPException(status_code=404, detail="Apiculteur introuvable")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(a, field, value)
+    session.add(a)
+    await session.commit()
+    await session.refresh(a)
+    counts = await _hive_counts(session, a.id)
+    return ApiculteurOut(
+        id=a.id, company_name=a.company_name, email=a.email,
+        phone=a.phone, region=a.region, city=a.city,
+        address=a.address, is_active=a.is_active, created_at=a.created_at, **counts,
+    )
+
+
+@router.delete("/apiculteurs/{apiculteur_id}", status_code=204)
+async def delete_apiculteur(
+    apiculteur_id: int,
+    session: AsyncSession = Depends(get_session),
+    current: dict         = Depends(require_role("superuser")),
+):
+    a = (await session.execute(
+        select(Apiculteur).where(Apiculteur.id == apiculteur_id)
+    )).scalars().first()
+    if not a:
+        raise HTTPException(status_code=404, detail="Apiculteur introuvable")
+    await session.delete(a)
+    await session.commit()
+
+
+# ── Scoped hives ──────────────────────────────────────────────────────────────
+
 @router.get("/apiculteurs/{apiculteur_id}/hives")
 async def get_apiculteur_hives(
     apiculteur_id: int,
@@ -78,6 +208,8 @@ async def get_apiculteur_hives(
     )).scalars().all()
     return rows
 
+
+# ── Scoped notifications ──────────────────────────────────────────────────────
 
 @router.get("/apiculteurs/{apiculteur_id}/notifications")
 async def get_apiculteur_notifications(
