@@ -175,3 +175,28 @@ class Measurement(SQLModel, table=True):
         # "give me all measurements for apiculteur X in time range T"
         Index("ix_measurement_apiculteur_ts", "apiculteur_id", "ts"),
     )
+    
+
+class HiveThreshold(SQLModel, table=True):
+    """
+    Per-hive alert thresholds set by an admin or superuser.
+    Falls back to global defaults when absent.
+    Only one active row per hive — upsert on hive_id.
+    """
+    __tablename__ = "hive_threshold"
+
+    id            : Optional[int]   = Field(default=None, primary_key=True)
+    hive_id       : int             = Field(foreign_key="hive.id", unique=True, index=True)
+    # Temperature
+    temp_attention : Optional[float] = Field(default=35.0)
+    temp_urgente   : Optional[float] = Field(default=40.0)
+    # Humidity
+    hum_attention  : Optional[float] = Field(default=70.0)
+    hum_urgente    : Optional[float] = Field(default=80.0)
+    # Battery (alert when BELOW this value)
+    battery_v      : Optional[float] = Field(default=3.5)
+    # Sound (alert when ABOVE this value)
+    sound_level    : Optional[int]   = Field(default=80)
+    # Metadata
+    updated_at     : datetime        = Field(default_factory=_utcnow)
+    updated_by_id  : Optional[int]   = Field(default=None, foreign_key="user.id")
