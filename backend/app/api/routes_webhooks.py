@@ -61,9 +61,16 @@ async def chirpstack_uplink(
 
     # ── AUTO CREATE + LINK HIVE IF MISSING ─────────────────────────────
     if device.hive_id is None:
+        # We cannot auto-create a hive without an apiculteur_id —
+        # that would violate the DB constraint and break access control.
+        # Instead, create an *unlinked* placeholder that a superuser
+        # must later assign to an apiculteur via the admin UI.
         hive = Hive(
             name=f"Ruche-{device.dev_eui[-4:]}",
-            location_name="Auto-created"
+            location_name="Auto-created — assign to an apiculteur",
+            apiculteur_id=None,   # intentionally unlinked
+            deleted_at=_utcnow(), # soft-deleted so it's hidden from normal queries
+                                # until a superuser assigns + restores it
         )
         session.add(hive)
         await session.commit()
@@ -74,7 +81,7 @@ async def chirpstack_uplink(
         await session.commit()
         await session.refresh(device)
 
-        print(f"🆕 Linked {device.dev_eui} → Hive {hive.id}")
+        print(f"⚠️  Device {device.dev_eui} → unlinked placeholder hive {hive.id} (needs apiculteur assignment)")
 
     
     device.status       = "online"
