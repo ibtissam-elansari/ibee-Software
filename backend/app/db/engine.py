@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import event, text
 from sqlmodel import SQLModel
 
 from app.core.settings import settings
@@ -22,6 +23,15 @@ AsyncSessionLocal = sessionmaker(
 async def create_db_and_tables() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
+        # Ensure the partial index exists on SQLite (dev) — Postgres creates it
+        # automatically via Index(..., postgresql_where=...) above, but SQLite
+        # needs an explicit CREATE INDEX ... WHERE statement.
+        dialect = conn.dialect.name
+        if dialect == "sqlite":
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_hive_apiculteur_active "
+                "ON hive (apiculteur_id) WHERE deleted_at IS NULL"
+            ))
 
 
 async def get_session():
