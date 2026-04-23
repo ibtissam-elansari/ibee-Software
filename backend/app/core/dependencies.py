@@ -5,8 +5,8 @@ from app.core.security import decode_token
 security = HTTPBearer()
 
 ROLE_HIERARCHY = {
-    "user": 0,
-    "admin": 1,
+    "user":      0,
+    "admin":     1,
     "superuser": 2,
 }
 
@@ -31,10 +31,13 @@ def require_min_role(min_role: str):
     return checker
 
 
+# Exact-role alias used by existing hive/device routes
+require_role = require_min_role
+
+
 # ── Access helpers ────────────────────────────────────────────────────────────
 
 def can_access_user(current: dict, target_user) -> bool:
-    """Superuser sees all. Admin sees own apiculteur. User sees only self."""
     if current["role"] == "superuser":
         return True
     if current["role"] == "admin":
@@ -43,25 +46,26 @@ def can_access_user(current: dict, target_user) -> bool:
 
 
 def can_access_apiculteur_data(current: dict, apiculteur_id: int) -> bool:
-    """Superuser sees all. Admin/user see only their own apiculteur."""
     if current["role"] == "superuser":
         return True
     return current.get("apiculteur_id") == apiculteur_id
 
 
 def can_access_hive(current: dict, hive) -> bool:
-    """
-    Superuser: any hive.
-    Admin/user: only hives whose apiculteur_id matches theirs.
-    `hive` must expose a `.apiculteur_id` attribute (add it to the Hive model
-    if it isn't there yet — see note below).
-    """
     if current["role"] == "superuser":
         return True
     return current.get("apiculteur_id") == hive.apiculteur_id
 
 
 def require_hive_access(current: dict, hive) -> None:
-    """Raises 403 if current user cannot access this hive."""
     if not can_access_hive(current, hive):
         raise HTTPException(status_code=403, detail="Accès refusé à cette ruche")
+
+
+def scope_to_apiculteur(current: dict, requested_apiculteur_id: int) -> None:
+    """
+    Raises 403 if a non-superuser tries to access another apiculteur's data.
+    Call this at the top of any endpoint that takes apiculteur_id as a path/query param.
+    """
+    if current["role"] != "superuser" and current.get("apiculteur_id") != requested_apiculteur_id:
+        raise HTTPException(status_code=403, detail="Accès refusé")
