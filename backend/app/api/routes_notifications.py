@@ -9,33 +9,22 @@ from sqlalchemy import select, func
 from pydantic import BaseModel
 
 from app.db.engine import get_session
-from app.models.models import Device, Hive, Measurement
+from app.models.models import Device, Hive, HiveThreshold, Measurement
 from app.core.dependencies import get_current_user
+from app.core.thresholds import Thresholds, get_thresholds_sync
 
 router = APIRouter()
 
 
-# ── Schemas ───────────────────────────────────────────────────────────────────
-
 class NotificationOut(BaseModel):
-    id      : str
-    type    : str    # 'security' | 'temperature' | 'humidity' | 'battery' | 'sound'
-    title   : str
-    message : str
-    time    : str    # formatted for display
-    ts      : datetime  # raw timestamp for sorting/filtering on the frontend
-    hive_id : int
-    hive_name: str
-
-
-# ── Thresholds ────────────────────────────────────────────────────────────────
-
-THRESHOLDS = {
-    "temperature_c" : {"attention": 35.0, "urgente": 40.0},
-    "humidity_pct"  : {"attention": 70.0, "urgente": 80.0},
-    "battery_v"     : 3.5,
-    "sound_level"   : 80,   # matches (sound ?? 0) > 80
-}
+    id        : str
+    type      : str
+    title     : str
+    message   : str
+    time      : str
+    ts        : datetime
+    hive_id   : int
+    hive_name : str
 
 
 def _fmt_time(ts: datetime) -> str:
@@ -43,113 +32,99 @@ def _fmt_time(ts: datetime) -> str:
 
 
 def _build_notifications(
-    m        : Measurement,
-    hive_name: str,
-    hive_id  : int,
+    m         : Measurement,
+    hive_name : str,
+    hive_id   : int,
+    thresholds: Optional[Thresholds] = None,
 ) -> list[NotificationOut]:
+    """
+    Build notifications for a single measurement.
+    Pass `thresholds` if already loaded to avoid redundant DB calls;
+    falls back to global defaults when None.
+    """
+    from app.core.thresholds import GLOBAL_DEFAULTS
+    t = thresholds or GLOBAL_DEFAULTS
+
     notifs = []
 
     if m.door_open:
         notifs.append(NotificationOut(
-            id        = f"{m.id}-door",
-            type      = "security",
-            title     = "Alerte de sécurité",
-            message   = f"Ruche {hive_name} : Ouverture suspecte détectée",
-            time      = _fmt_time(m.ts),
-            ts        = m.ts,
-            hive_id   = hive_id,
-            hive_name = hive_name,
+            id=f"{m.id}-door", type="security",
+            title="Alerte de sécurité",
+            message=f"Ruche {hive_name} : Ouverture suspecte détectée",
+            time=_fmt_time(m.ts), ts=m.ts, hive_id=hive_id, hive_name=hive_name,
         ))
 
-    if m.temperature_c is not None and m.temperature_c > THRESHOLDS["temperature_c"]["attention"]:
-        is_urgent = m.temperature_c > THRESHOLDS["temperature_c"]["urgente"]
+    if m.temperature_c is not None and m.temperature_c > t.temp_attention:
+        urgent = m.temperature_c > t.temp_urgente
         notifs.append(NotificationOut(
-            id        = f"{m.id}-temp",
-            type      = "temperature",
-            title     = "Alerte Température" if is_urgent else "Température Élevée",
-            message   = f"Ruche {hive_name} : {round(m.temperature_c, 1)}°C détectés {'(Urgent)' if is_urgent else ''}",
-            time      = _fmt_time(m.ts),
-            ts        = m.ts,
-            hive_id   = hive_id,
-            hive_name = hive_name,
+            id=f"{m.id}-temp", type="temperature",
+            title="Alerte Température" if urgent else "Température Élevée",
+            message=f"Ruche {hive_name} : {round(m.temperature_c, 1)}°C {'(Urgent)' if urgent else ''}",
+            time=_fmt_time(m.ts), ts=m.ts, hive_id=hive_id, hive_name=hive_name,
         ))
 
-    if m.humidity_pct is not None and m.humidity_pct > THRESHOLDS["humidity_pct"]["attention"]:
-        is_urgent = m.humidity_pct > THRESHOLDS["humidity_pct"]["urgente"]
+    if m.humidity_pct is not None and m.humidity_pct > t.hum_attention:
+        urgent = m.humidity_pct > t.hum_urgente
         notifs.append(NotificationOut(
-            id        = f"{m.id}-hum",
-            type      = "humidity",
-            title     = "Humidité Élevée",
-            message   = f"Ruche {hive_name} : Taux d'humidité supérieur à {round(m.humidity_pct)}%",
-            time      = _fmt_time(m.ts),
-            ts        = m.ts,
-            hive_id   = hive_id,
-            hive_name = hive_name,
+            id=f"{m.id}-hum", type="humidity",
+            title="Humidité Élevée",
+            message=f"Ruche {hive_name} : {round(m.humidity_pct)}% d'humidité",
+            time=_fmt_time(m.ts), ts=m.ts, hive_id=hive_id, hive_name=hive_name,
         ))
 
-    if m.sound_level is not None and m.sound_level > THRESHOLDS["sound_level"]:
+    if m.sound_level is not None and m.sound_level > t.sound_level:
         notifs.append(NotificationOut(
-            id        = f"{m.id}-sound",
-            type      = "sound",
-            title     = "Activité Sonore",
-            message   = f"Ruche {hive_name} : Niveau sonore élevé ({m.sound_level})",
-            time      = _fmt_time(m.ts),
-            ts        = m.ts,
-            hive_id   = hive_id,
-            hive_name = hive_name,
+            id=f"{m.id}-sound", type="sound",
+            title="Activité Sonore",
+            message=f"Ruche {hive_name} : Niveau sonore élevé ({m.sound_level})",
+            time=_fmt_time(m.ts), ts=m.ts, hive_id=hive_id, hive_name=hive_name,
         ))
 
-    if m.battery_v is not None and m.battery_v <= THRESHOLDS["battery_v"]:
+    if m.battery_v is not None and m.battery_v <= t.battery_v:
         notifs.append(NotificationOut(
-            id        = f"{m.id}-batt",
-            type      = "battery",
-            title     = "Batterie Faible",
-            message   = f"Ruche {hive_name} : Batterie à {round(m.battery_v, 2)}V",
-            time      = _fmt_time(m.ts),
-            ts        = m.ts,
-            hive_id   = hive_id,
-            hive_name = hive_name,
+            id=f"{m.id}-batt", type="battery",
+            title="Batterie Faible",
+            message=f"Ruche {hive_name} : Batterie à {round(m.battery_v, 2)}V",
+            time=_fmt_time(m.ts), ts=m.ts, hive_id=hive_id, hive_name=hive_name,
         ))
 
     return notifs
 
-
-# ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.get("/notifications", response_model=list[NotificationOut])
 async def get_notifications(
     session : AsyncSession = Depends(get_session),
     current : dict         = Depends(get_current_user),
 ):
-    """
-    Returns notifications derived from the latest measurement of every hive.
-    Uses a single query with a subquery for latest-per-hive — no N+1.
-    """
-
     # Subquery: latest measurement id per device
     latest_ids_subq = (
         select(func.max(Measurement.id).label("max_id"))
         .join(Device, Device.id == Measurement.device_id)
+        .join(Hive,   Hive.id   == Device.hive_id)
+        .where(Hive.deleted_at.is_(None))
         .group_by(Device.hive_id)
         .scalar_subquery()
     )
 
-    # Single query: join latest measurements with their hives
-    result = await session.execute(
-        select(Measurement, Hive)
-        .join(Device, Device.id == Measurement.device_id)
-        .join(Hive,   Hive.id   == Device.hive_id)
+    q = (
+        select(Measurement, Hive, HiveThreshold)
+        .join(Device,        Device.id        == Measurement.device_id)
+        .join(Hive,          Hive.id          == Device.hive_id)
+        .outerjoin(HiveThreshold, HiveThreshold.hive_id == Hive.id)
         .where(Measurement.id.in_(latest_ids_subq))
-        .order_by(Measurement.ts.desc())
     )
-    rows = result.all()
 
-    all_notifications: list[NotificationOut] = []
-    for measurement, hive in rows:
-        all_notifications.extend(
-            _build_notifications(measurement, hive.name, hive.id)
-        )
+    # Scope non-superusers to their apiculteur
+    if current["role"] != "superuser":
+        q = q.where(Hive.apiculteur_id == current["apiculteur_id"])
 
-    # Sort by actual timestamp descending — not by formatted string
-    all_notifications.sort(key=lambda n: n.ts, reverse=True)
-    return all_notifications
+    rows = (await session.execute(q.order_by(Measurement.ts.desc()))).all()
+
+    all_notifs: list[NotificationOut] = []
+    for m, hive, threshold_row in rows:
+        t = get_thresholds_sync(threshold_row)
+        all_notifs.extend(_build_notifications(m, hive.name, hive.id, t))
+
+    all_notifs.sort(key=lambda n: n.ts, reverse=True)
+    return all_notifs
