@@ -1,124 +1,87 @@
-// /hooks/useHives.js
-import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
-import * as hivesApi from '../api/hives';
-import useHiveStore from '../store/useHiveStore';
-import { useEffect } from 'react';
+// hooks/useHives.js
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  getHives, getHive, createHive, updateHive, deleteHive,
+  getHiveLatest, getHiveHistory, getHiveStats,
+} from '../api/hives'
+import { getApiculteurHives } from '../api/apiculteurs'
 
-// ── Query keys — single source of truth for cache invalidation ───────────────
-export const hiveKeys = {
-  all     : ['hives'],
-  detail  : (id) => ['hives', id],
-  latest  : (id) => ['hives', id, 'latest'],
-  history : (id) => ['hives', id, 'history'],
-  stats   : (id) => ['hives', id, 'stats'],
-};
-
-// ── Fetch all hives + sync into Zustand ──────────────────────────────────────
-export function useHiveList() {
-  const setHives = useHiveStore(s => s.setHives);
-
-  const query = useQuery({
-    queryKey : hiveKeys.all,
-    queryFn  : hivesApi.getHives,
-  });
-
-  // Keep Zustand in sync whenever react-query fetches fresh data
-  useEffect(() => {
-    if (query.data) setHives(query.data);
-  }, [query.data, setHives]);
-
-  return query;
+// ── Hive list ─────────────────────────────────────────────────────────────────
+// When apiculteurId is provided, fetch scoped hives via the apiculteur endpoint.
+// When omitted (superuser global context), fetch all hives.
+export function useHiveList(apiculteurId) {
+  return useQuery({
+    queryKey : apiculteurId ? ['apiculteur-hives', apiculteurId] : ['hives'],
+    queryFn  : apiculteurId
+      ? () => getApiculteurHives(apiculteurId)
+      : () => getHives(),
+    enabled  : true,
+    staleTime: 15_000,
+    refetchInterval: 60_000,
+  })
 }
 
-export function useAllHivesLatest(hiveIds = []) {
+export function useHive(id) {
   return useQuery({
-    queryKey        : ['hives-latest-all', hiveIds],
-    queryFn         : async () => {
-      if (!hiveIds.length) return [];
-      const results = await Promise.allSettled(
-        hiveIds.map(id => hivesApi.getHiveLatest(id))
-      );
-      return results.map((r, i) => ({
-        hive_id : hiveIds[i],
-        data    : r.status === 'fulfilled' ? r.value : null,
-      }));
-    },
-    enabled         : hiveIds.length > 0,
+    queryKey : ['hive', id],
+    queryFn  : () => getHive(id),
+    enabled  : !!id,
+    staleTime: 30_000,
+  })
+}
+
+// ── Hive data ─────────────────────────────────────────────────────────────────
+export function useHiveLatest(hiveId, options = {}) {
+  const { enabled: enabledOpt, ...rest } = options
+  return useQuery({
+    queryKey        : ['hive-latest', hiveId],
+    queryFn         : () => getHiveLatest(hiveId),
+    enabled         : !!hiveId && (enabledOpt !== false),  // respects caller's override
+    staleTime       : 5_000,
     refetchInterval : 15_000,
-    staleTime       : 10_000,
-  });
+    ...rest,
+  })
 }
 
-// ── Latest measurement for one hive (polling every 15s) ──────────────────────
-export function useHiveLatest(hiveId) {
+export function useHiveHistory(hiveId, limit, start, end) {
   return useQuery({
-    queryKey  : hiveKeys.latest(hiveId),
-    queryFn   : () => hivesApi.getHiveLatest(hiveId),
-    enabled   : !!hiveId,
-    refetchInterval: 15_000,   // poll every 15s (SSE not used in this app)
-    staleTime : 10_000,
-  });
+    queryKey : ['hive-history', hiveId, limit, start, end],
+    queryFn  : () => getHiveHistory(hiveId, limit, start, end),
+    enabled  : !!hiveId,
+    staleTime: 30_000,
+  })
 }
 
-// ── History for charts ────────────────────────────────────────────────────────
-export function useHiveHistory(hiveId, limit = 100) {
-  return useQuery({
-    queryKey       : hiveKeys.history(hiveId),
-    queryFn        : () => hivesApi.getHiveHistory(hiveId, limit),
-    enabled        : !!hiveId,
-    refetchInterval: 15_000,  // same cadence as latest
-    staleTime      : 10_000,
-  });
-}
-
-// ── Aggregate stats ───────────────────────────────────────────────────────────
 export function useHiveStats(hiveId) {
   return useQuery({
-    queryKey : hiveKeys.stats(hiveId),
-    queryFn  : () => hivesApi.getHiveStats(hiveId),
+    queryKey : ['hive-stats', hiveId],
+    queryFn  : () => getHiveStats(hiveId),
     enabled  : !!hiveId,
     staleTime: 60_000,
-  });
+  })
 }
 
-// ── Create hive ───────────────────────────────────────────────────────────────
+// ── Mutations ──────────────────────────────────────────────────────────────────
 export function useCreateHive() {
-  const queryClient = useQueryClient();
-  const addHive     = useHiveStore(s => s.addHive);
-
+  const qc = useQueryClient()
   return useMutation({
-    mutationFn: hivesApi.createHive,
-    onSuccess : (newHive) => {
-      addHive(newHive);
-      queryClient.invalidateQueries({ queryKey: hiveKeys.all });
-    },
-  });
+    mutationFn: createHive,
+    onSuccess : () => qc.invalidateQueries({ queryKey: ['hives'] }),
+  })
 }
 
-// ── Update hive ───────────────────────────────────────────────────────────────
 export function useUpdateHive() {
-  const queryClient = useQueryClient();
-  const updateHive  = useHiveStore(s => s.updateHive);
-
+  const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }) => hivesApi.updateHive(id, data),
-    onSuccess : (updated) => {
-      updateHive(updated.id, updated);
-      queryClient.invalidateQueries({ queryKey: hiveKeys.all });
-    },
-  });
+    mutationFn: ({ id, data }) => updateHive(id, data),
+    onSuccess : () => qc.invalidateQueries({ queryKey: ['hives'] }),
+  })
 }
 
-// ── Delete hive ───────────────────────────────────────────────────────────────
 export function useDeleteHive() {
-  const queryClient = useQueryClient();
-  const removeHive  = useHiveStore(s => s.removeHive);
-
+  const qc = useQueryClient()
   return useMutation({
-    mutationFn: hivesApi.deleteHive,
-    onSuccess : (_, id) => {
-      removeHive(id);
-      queryClient.invalidateQueries({ queryKey: hiveKeys.all });
-    },
-  });
+    mutationFn: deleteHive,
+    onSuccess : () => qc.invalidateQueries({ queryKey: ['hives'] }),
+  })
 }
