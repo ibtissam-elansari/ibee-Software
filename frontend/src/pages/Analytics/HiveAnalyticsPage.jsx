@@ -1,5 +1,5 @@
 import React from 'react'
-import { useParams, useNavigate } from 'react-router'
+import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Settings, ExternalLink, Download } from 'lucide-react'
 import { useHiveList } from '../../hooks/useHives'
 import { useHiveAnalytics } from './hooks/useHiveAnalytics'
@@ -9,11 +9,16 @@ import ComparativeChart         from './components/ComparativeChart'
 import { HoneycombBottomRight } from './components/HoneycombDecor'
 
 const HiveAnalyticsPage = () => {
-  const { hiveId } = useParams()
-  const navigate   = useNavigate()
-  const id         = Number(hiveId)
+  // Route: /apiculteurs/:apiculteurId/gestion/:hiveId
+  // Both params are always present — the route definition guarantees it.
+  const { apiculteurId, hiveId } = useParams()
+  const navigate = useNavigate()
+  const id       = Number(hiveId)
 
-  const { data: hives = [] } = useHiveList()
+  // All navigation within this page must stay scoped to this apiculteur
+  const base = `/apiculteurs/${apiculteurId}`
+
+  const { data: hives = [] } = useHiveList(Number(apiculteurId))
   const hive = hives.find(h => h.id === id)
 
   const {
@@ -35,8 +40,9 @@ const HiveAnalyticsPage = () => {
 
         {/* ── Top bar ── */}
         <div className="flex items-center justify-between">
+          {/* Back → Gestion des ruches (scoped) */}
           <button
-            onClick={() => navigate('/gestion')}
+            onClick={() => navigate(`${base}/gestion`)}
             className="w-8 h-8 flex items-center justify-center rounded-lg
                        border border-gray-200 bg-white hover:bg-gray-50
                        text-gray-500 transition-colors"
@@ -114,7 +120,7 @@ const HiveAnalyticsPage = () => {
                   metric={m}
                   value={m === 'temperature' ? temp : m === 'humidity' ? humidity : sound}
                   range={metricRanges[m === 'temperature' ? 'temp' : m]}
-                  onDetails={() => navigate(`/gestion/${hiveId}/details/${m}`)}
+                  onDetails={() => navigate(`${base}/gestion/${hiveId}/details/${m}`)}
                   isLoading={isLoading}
                 />
               ))}
@@ -133,7 +139,6 @@ const HiveAnalyticsPage = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Excel export — now calls exportExcel() */}
               <button
                 onClick={exportExcel}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg
@@ -144,7 +149,6 @@ const HiveAnalyticsPage = () => {
                 Excel
               </button>
 
-              {/* Date filter — now wired to selectedDate */}
               <input
                 type="date"
                 value={selectedDate}
@@ -154,7 +158,6 @@ const HiveAnalyticsPage = () => {
                            cursor-pointer"
               />
 
-              {/* Clear date filter */}
               {selectedDate && (
                 <button
                   onClick={() => setSelectedDate('')}

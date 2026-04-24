@@ -1,60 +1,37 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Bell, Download, Calendar } from 'lucide-react';
 import { Thermometer, Droplets, Volume2 } from 'lucide-react';
 import { useMetricDetail } from './hooks/useMetricDetail';
 import MetricDetailChart from './components/MetricDetailChart';
-import { HoneycombTopRight, HoneycombBottomRight } from './components/HoneycombDecor';
-
-
-// ── Config per metric ────────────────────────────────────────────────────────
+import { HoneycombBottomRight } from './components/HoneycombDecor';
 
 const METRIC_CONFIG = {
   temperature: {
     title    : 'Détails : Variation Température',
     subtitle : 'Analyse détaillée des relevés de température sur la période sélectionnée',
     unit     : '°C',
-    AvgIcon  : Thermometer,
-    avgIconBg: 'bg-orange-50',
-    avgIconColor: '#D97706',
-    MaxIcon  : Thermometer,
-    maxIconBg: 'bg-red-50',
-    maxIconColor: '#EF4444',
-    MinIcon  : Thermometer,
-    minIconBg: 'bg-blue-50',
-    minIconColor: '#3B82F6',
+    AvgIcon  : Thermometer, avgIconBg: 'bg-orange-50', avgIconColor: '#D97706',
+    MaxIcon  : Thermometer, maxIconBg: 'bg-red-50',    maxIconColor: '#EF4444',
+    MinIcon  : Thermometer, minIconBg: 'bg-blue-50',   minIconColor: '#3B82F6',
   },
   humidity: {
     title    : 'Détails : Variation Humidité',
-    subtitle : 'Analyse détaillée des relevés d\'humidité sur la période sélectionnée',
+    subtitle : "Analyse détaillée des relevés d'humidité sur la période sélectionnée",
     unit     : '%',
-    AvgIcon  : Droplets,
-    avgIconBg: 'bg-blue-50',
-    avgIconColor: '#3B82F6',
-    MaxIcon  : Droplets,
-    maxIconBg: 'bg-red-50',
-    maxIconColor: '#EF4444',
-    MinIcon  : Droplets,
-    minIconBg: 'bg-blue-50',
-    minIconColor: '#60A5FA',
+    AvgIcon  : Droplets, avgIconBg: 'bg-blue-50', avgIconColor: '#3B82F6',
+    MaxIcon  : Droplets, maxIconBg: 'bg-red-50',  maxIconColor: '#EF4444',
+    MinIcon  : Droplets, minIconBg: 'bg-blue-50', minIconColor: '#60A5FA',
   },
   sound: {
     title    : 'Détails : Variation Sonore',
     subtitle : 'Analyse détaillée des relevés acoustiques sur la période sélectionnée',
     unit     : 'Hz',
-    AvgIcon  : Volume2,
-    avgIconBg: 'bg-orange-50',
-    avgIconColor: '#D97706',
-    MaxIcon  : Volume2,
-    maxIconBg: 'bg-red-50',
-    maxIconColor: '#EF4444',
-    MinIcon  : Volume2,
-    minIconBg: 'bg-blue-50',
-    minIconColor: '#3B82F6',
+    AvgIcon  : Volume2, avgIconBg: 'bg-orange-50', avgIconColor: '#D97706',
+    MaxIcon  : Volume2, maxIconBg: 'bg-red-50',    maxIconColor: '#EF4444',
+    MinIcon  : Volume2, minIconBg: 'bg-blue-50',   minIconColor: '#3B82F6',
   },
 };
-
-// ── Stat card ────────────────────────────────────────────────────────────────
 
 const StatCard = ({ label, value, unit, color, Icon, iconBg, iconColor, loading }) => (
   <div className="flex-1 bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm">
@@ -76,27 +53,24 @@ const StatCard = ({ label, value, unit, color, Icon, iconBg, iconColor, loading 
   </div>
 );
 
-// ── Range tab button ─────────────────────────────────────────────────────────
-
 const RangeTab = ({ id, label, active, onClick }) => (
   <button
     onClick={() => onClick(id)}
     className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors
-      ${active
-        ? 'bg-amber-400 text-white'
-        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-      }`}
+      ${active ? 'bg-amber-400 text-white' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
   >
     {label}
   </button>
 );
 
-// ── Main page ────────────────────────────────────────────────────────────────
-
 const MetricDetailPage = () => {
-  const { hiveId, metric } = useParams();
+  // Route: /apiculteurs/:apiculteurId/gestion/:hiveId/details/:metric
+  const { apiculteurId, hiveId, metric } = useParams();
   const navigate = useNavigate();
   const id = Number(hiveId);
+
+  // Back → HiveAnalyticsPage (scoped)
+  const base = `/apiculteurs/${apiculteurId}`;
 
   const cfg = METRIC_CONFIG[metric] ?? METRIC_CONFIG.sound;
 
@@ -109,13 +83,11 @@ const MetricDetailPage = () => {
     avg, max, min, alerts,
     chartData,
     xAxisTicks,
-    hasData,
     exportExcel,
-  } = useMetricDetail(id, metric)
+  } = useMetricDetail(id, metric);
 
   return (
     <div className="relative min-h-full overflow-hidden" style={{ background: '#FBFAF7' }}>
-      {/* <HoneycombTopRight /> */}
       <HoneycombBottomRight />
 
       <div className="relative z-10 flex flex-col gap-6 p-6">
@@ -124,7 +96,7 @@ const MetricDetailPage = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate(`/gestion/${hiveId}`)}
+              onClick={() => navigate(`${base}/gestion/${hiveId}`)}
               className="w-8 h-8 flex items-center justify-center rounded-lg
                          border border-gray-200 bg-white hover:bg-gray-50
                          text-gray-500 transition-colors"
@@ -149,42 +121,14 @@ const MetricDetailPage = () => {
 
         {/* ── Stat cards ── */}
         <div className="flex gap-4">
-          <StatCard
-            label="Moyenne"
-            value={avg} unit={unit}
-            color="text-gray-900"
-            Icon={cfg.AvgIcon}
-            iconBg={cfg.avgIconBg}
-            iconColor={cfg.avgIconColor}
-            loading={isLoading}
-          />
-          <StatCard
-            label="Maximum"
-            value={max} unit={unit}
-            color="text-red-500"
-            Icon={cfg.MaxIcon}
-            iconBg={cfg.maxIconBg}
-            iconColor={cfg.maxIconColor}
-            loading={isLoading}
-          />
-          <StatCard
-            label="Minimum"
-            value={min} unit={unit}
-            color="text-blue-500"
-            Icon={cfg.MinIcon}
-            iconBg={cfg.minIconBg}
-            iconColor={cfg.minIconColor}
-            loading={isLoading}
-          />
-          <StatCard
-            label="Alertes"
-            value={alerts} unit=""
-            color="text-gray-900"
-            Icon={Bell}
-            iconBg="bg-gray-100"
-            iconColor="#9CA3AF"
-            loading={isLoading}
-          />
+          <StatCard label="Moyenne" value={avg} unit={unit} color="text-gray-900"
+            Icon={cfg.AvgIcon} iconBg={cfg.avgIconBg} iconColor={cfg.avgIconColor} loading={isLoading} />
+          <StatCard label="Maximum" value={max} unit={unit} color="text-red-500"
+            Icon={cfg.MaxIcon} iconBg={cfg.maxIconBg} iconColor={cfg.maxIconColor} loading={isLoading} />
+          <StatCard label="Minimum" value={min} unit={unit} color="text-blue-500"
+            Icon={cfg.MinIcon} iconBg={cfg.minIconBg} iconColor={cfg.minIconColor} loading={isLoading} />
+          <StatCard label="Alertes" value={alerts} unit="" color="text-gray-900"
+            Icon={Bell} iconBg="bg-gray-100" iconColor="#9CA3AF" loading={isLoading} />
         </div>
 
         {/* ── Detail chart ── */}
@@ -193,38 +137,22 @@ const MetricDetailPage = () => {
             <h2 className="text-lg font-bold text-gray-900">Évolution Détaillée</h2>
 
             <div className="flex items-center gap-3">
-              {/* Range tabs */}
               <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5">
-                {[
-                  { id: 'J',    label: 'J'    },
-                  { id: '7j',   label: '7j'   },
-                  { id: 'Mois', label: 'Mois' },
-                ].map(t => (
-                  <RangeTab
-                    key={t.id}
-                    id={t.id}
-                    label={t.label}
-                    active={range === t.id}
-                    onClick={setRange}
-                  />
+                {[{ id: 'J', label: 'J' }, { id: '7j', label: '7j' }, { id: 'Mois', label: 'Mois' }].map(t => (
+                  <RangeTab key={t.id} id={t.id} label={t.label} active={range === t.id} onClick={setRange} />
                 ))}
               </div>
 
-              {/* Date range */}
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <Calendar className="w-3.5 h-3.5" />
                 <input
-                  type="date"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
+                  type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
                   className="h-7 px-2 border border-gray-200 rounded-lg text-xs
                              text-gray-500 focus:outline-none focus:border-gray-400 bg-white"
                 />
                 <span>→</span>
                 <input
-                  type="date"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
+                  type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
                   className="h-7 px-2 border border-gray-200 rounded-lg text-xs
                              text-gray-500 focus:outline-none focus:border-gray-400 bg-white"
                 />
@@ -233,11 +161,8 @@ const MetricDetailPage = () => {
           </div>
 
           <MetricDetailChart
-            data={chartData}
-            metric={metric}
-            unit={unit}
-            isLoading={isLoading}
-            xAxisTicks={xAxisTicks}
+            data={chartData} metric={metric} unit={unit}
+            isLoading={isLoading} xAxisTicks={xAxisTicks}
           />
         </div>
       </div>
