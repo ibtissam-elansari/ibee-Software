@@ -8,10 +8,6 @@ const REGIONS = [
   'Laâyoune-Sakia El Hamra', 'Dakhla-Oued Ed-Dahab',
 ];
 
-/**
- * ApiculteurFormModal — shared for add and edit.
- * Matches Figma Image 2 exactly.
- */
 const ApiculteurFormModal = ({
   mode = 'add',
   initialData = null,

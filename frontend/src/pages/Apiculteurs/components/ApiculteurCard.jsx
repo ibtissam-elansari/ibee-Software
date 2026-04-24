@@ -2,16 +2,6 @@ import React from 'react';
 import { Pencil, Home, Mail, Phone, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
-/**
- * ApiculteurCard — matches Figma Image 1 card exactly.
- *
- * Layout:
- *  Row 1 : avatar + name + date + pencil icon
- *  Row 2 : Active pill + Inactive pill
- *  Row 3 : ruches count + email
- *  Row 4 : phone + location
- *  Row 5 : "Détails" centered link
- */
 const ApiculteurCard = ({ apiculteur, onEdit }) => {
   const navigate = useNavigate();
 
@@ -92,7 +82,7 @@ const ApiculteurCard = ({ apiculteur, onEdit }) => {
 
       {/* Détails link */}
       <button
-        onClick={() => navigate(`/apiculteurs/${user_id}/dashboard`)}
+        onClick={() => navigate(`/apiculteurs/${apiculteur.id}/dashboard`)}
         className="text-sm text-gray-500 hover:text-amber-500 transition-colors
                    text-center font-medium"
       >
