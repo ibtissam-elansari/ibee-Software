@@ -1,4 +1,5 @@
 import React from 'react'
+import { useParams } from 'react-router-dom'
 import { Bell, Filter } from 'lucide-react'
 import {
   ResponsiveContainer, AreaChart, Area,
@@ -31,9 +32,7 @@ const RangeTab = ({ id, label, active, onClick }) => (
   <button
     onClick={() => onClick(id)}
     className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors
-      ${active
-        ? 'bg-amber-400 text-white'
-        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+      ${active ? 'bg-amber-400 text-white' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
   >
     {label}
   </button>
@@ -50,6 +49,9 @@ const AreaTooltip = ({ active, payload, label }) => {
 }
 
 const AlertStatsPage = () => {
+  // Read apiculteurId from URL — scopes all alert data to this coop
+  const { apiculteurId } = useParams()
+
   const {
     range, setRange,
     startDate, setStartDate,
@@ -60,37 +62,30 @@ const AlertStatsPage = () => {
     alerts, alertsLoading, totalToday,
     typeFilter, setTypeFilter,
     impFilter,  setImpFilter,
-  } = useAlertStats()
+  } = useAlertStats(Number(apiculteurId))
 
   return (
-    <div
-      className="flex gap-5 p-6"
-      style={{ background: '#FDFAF4', minHeight: '100%' }}
-    >
+    <div className="flex gap-5 p-6" style={{ background: '#FDFAF4', minHeight: '100%' }}>
+
       {/* ── LEFT COLUMN ── */}
       <div className="flex-1 flex flex-col gap-5 min-w-0">
 
-        {/* ── Shared date range + range tabs ── */}
+        {/* Shared date range + range tabs */}
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-xs text-gray-400 font-medium">Période :</span>
           <div className="flex items-center gap-2">
             <input
-              type="date"
-              value={startDate}
-              onChange={e => { setStartDate(e.target.value); }}
+              type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
               className="h-8 px-3 border border-gray-200 rounded-lg text-xs
                          text-gray-500 focus:outline-none focus:border-amber-400 bg-white"
             />
             <span className="text-gray-300 text-sm">→</span>
             <input
-              type="date"
-              value={endDate}
-              onChange={e => setEndDate(e.target.value)}
+              type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
               className="h-8 px-3 border border-gray-200 rounded-lg text-xs
                          text-gray-500 focus:outline-none focus:border-amber-400 bg-white"
             />
           </div>
-          {/* Range quick tabs */}
           <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5 ml-1">
             {['7j', '15j', 'Mois'].map(r => (
               <RangeTab
@@ -110,7 +105,7 @@ const AlertStatsPage = () => {
           )}
         </div>
 
-        {/* ── Timeline chart ── */}
+        {/* Timeline chart */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-gray-800">
@@ -120,7 +115,6 @@ const AlertStatsPage = () => {
               Présentation visuelle des alertes reçues à travers la ruche
             </p>
           </div>
-
           {timelineLoading ? (
             <div className="h-72 bg-gray-50 rounded-xl animate-pulse" />
           ) : timelineData.length === 0 ? (
@@ -138,96 +132,48 @@ const AlertStatsPage = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="4 4" stroke="rgba(0,0,0,0.05)" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                  axisLine={false}
-                  tickLine={false}
-                  allowDecimals={false}
-                />
-                <Tooltip
-                  content={<AreaTooltip />}
-                  cursor={{ stroke: '#E5E7EB', strokeWidth: 1 }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="count"
-                  stroke="#F472B6"
-                  strokeWidth={2}
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<AreaTooltip />} cursor={{ stroke: '#E5E7EB', strokeWidth: 1 }} />
+                <Area type="monotone" dataKey="count" stroke="#F472B6" strokeWidth={2}
                   fill="url(#alertGrad)"
                   dot={{ fill: '#F472B6', r: 3, strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: '#F472B6', stroke: 'white', strokeWidth: 2 }}
-                />
+                  activeDot={{ r: 5, fill: '#F472B6', stroke: 'white', strokeWidth: 2 }} />
               </AreaChart>
             </ResponsiveContainer>
           )}
         </div>
 
-        {/* ── Weekly bar chart ── */}
+        {/* Weekly bar chart */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-800">
               Aperçu hebdomadaire des alertes urgentes
             </h2>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200
-                               px-3 py-1 rounded-lg">
+              <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 px-3 py-1 rounded-lg">
                 {weekLabel}
               </span>
-              <div className="flex items-center gap-1 bg-gray-50 border border-gray-200
-                              rounded-lg p-0.5">
+              <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5">
                 {['7j', '15j', 'Mois'].map(r => (
-                  <RangeTab
-                    key={r} id={r} label={r}
-                    active={weeklyRange === r}
-                    onClick={setWeeklyRange}
-                  />
+                  <RangeTab key={r} id={r} label={r} active={weeklyRange === r} onClick={setWeeklyRange} />
                 ))}
               </div>
             </div>
           </div>
-
           {weeklyLoading ? (
             <div className="h-72 bg-gray-50 rounded-xl animate-pulse" />
           ) : (
             <ResponsiveContainer width="100%" height={290}>
-              <BarChart
-                data={weeklyData}
-                margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
-                barCategoryGap="40%"
-              >
+              <BarChart data={weeklyData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="40%">
                 <CartesianGrid strokeDasharray="4 4" stroke="rgba(0,0,0,0.05)" vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  tick={{ fontSize: 11, fill: '#9CA3AF' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                  axisLine={false}
-                  tickLine={false}
-                  allowDecimals={false}
-                />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{
-                    background: 'white', border: '1px solid #F3F4F6',
-                    borderRadius: 12, fontSize: 12,
-                  }}
+                  contentStyle={{ background: 'white', border: '1px solid #F3F4F6', borderRadius: 12, fontSize: 12 }}
                   cursor={{ fill: 'rgba(0,0,0,0.03)' }}
                 />
-                <Bar
-                  dataKey="count"
-                  fill="#3B82F6"
-                  radius={[4, 4, 0, 0]}
-                  name="Alertes urgentes"
-                />
+                <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} name="Alertes urgentes" />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -240,28 +186,20 @@ const AlertStatsPage = () => {
                    shadow-sm flex flex-col"
         style={{ height: 'calc(100vh - 96px)', position: 'sticky', top: '24px' }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3
-                        border-b border-gray-100 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
           <h2 className="text-base font-semibold text-gray-900">Historique des Alertes</h2>
           <Bell className="w-4 h-4 text-gray-300" />
         </div>
 
-        {/* Today count */}
-        <div className="flex items-center justify-between px-5 py-3
-                        border-b border-gray-100 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
           <span className="text-sm font-semibold text-gray-800">Aujourd'hui</span>
           <span className="text-xs text-gray-400">{totalToday} alertes</span>
         </div>
 
-        {/* Filters */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 flex-shrink-0">
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
             className="flex-1 h-7 px-2 border border-gray-200 rounded-lg text-[11px]
-                       text-gray-600 focus:outline-none focus:border-amber-400 bg-white"
-          >
+                       text-gray-600 focus:outline-none focus:border-amber-400 bg-white">
             <option value="">Type</option>
             <option value="security">Sécurité</option>
             <option value="temperature">Température</option>
@@ -269,12 +207,9 @@ const AlertStatsPage = () => {
             <option value="battery">Batterie</option>
             <option value="sound">Sonore</option>
           </select>
-          <select
-            value={impFilter}
-            onChange={e => setImpFilter(e.target.value)}
+          <select value={impFilter} onChange={e => setImpFilter(e.target.value)}
             className="flex-1 h-7 px-2 border border-gray-200 rounded-lg text-[11px]
-                       text-gray-600 focus:outline-none focus:border-amber-400 bg-white"
-          >
+                       text-gray-600 focus:outline-none focus:border-amber-400 bg-white">
             <option value="">Importance</option>
             <option value="urgente">Urgente</option>
             <option value="attention">Attention</option>
@@ -282,16 +217,13 @@ const AlertStatsPage = () => {
           <Filter className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
         </div>
 
-        {/* Table header */}
         <div className="grid grid-cols-3 px-4 py-2 border-b border-gray-100
-                        text-[10px] font-semibold uppercase tracking-wider
-                        text-gray-400 flex-shrink-0">
+                        text-[10px] font-semibold uppercase tracking-wider text-gray-400 flex-shrink-0">
           <span>Date</span>
           <span>Temps</span>
           <span>Type</span>
         </div>
 
-        {/* Scrollable rows — this is the only part that scrolls */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {alertsLoading ? (
             <div className="p-4 flex flex-col gap-2">
@@ -307,21 +239,15 @@ const AlertStatsPage = () => {
             alerts.map((alert) => {
               const isUrgent = alert.importance === 'urgente'
               const dt       = new Date(alert.ts)
-              const dateStr  = dt.toLocaleDateString('fr-FR')
-              const timeStr  = dt.toLocaleTimeString('fr-FR', {
-                hour: '2-digit', minute: '2-digit',
-              })
               return (
                 <div
                   key={alert.id}
-                  className={`grid grid-cols-3 items-center px-4 py-3
-                              border-b border-gray-50 transition-colors
-                              ${isUrgent
-                                ? 'bg-red-50/40 hover:bg-red-50/70'
-                                : 'bg-white hover:bg-gray-50'}`}
+                  className={`grid grid-cols-3 items-center px-4 py-3 border-b border-gray-50
+                              transition-colors
+                              ${isUrgent ? 'bg-red-50/40 hover:bg-red-50/70' : 'bg-white hover:bg-gray-50'}`}
                 >
-                  <span className="text-[11px] text-gray-600">{dateStr}</span>
-                  <span className="text-[11px] text-gray-500">{timeStr}</span>
+                  <span className="text-[11px] text-gray-600">{dt.toLocaleDateString('fr-FR')}</span>
+                  <span className="text-[11px] text-gray-500">{dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
                   <TypeBadge type={alert.type} />
                 </div>
               )
