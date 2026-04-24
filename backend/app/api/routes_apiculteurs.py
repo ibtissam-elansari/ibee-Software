@@ -9,8 +9,9 @@ from sqlalchemy import select, func, Integer
 from pydantic import BaseModel
 
 from app.db.engine import get_session
-from app.models.models import Apiculteur, Hive, Device, Measurement
+from app.models.models import Apiculteur, Hive, Device, Measurement, HiveThreshold
 from app.core.dependencies import get_current_user, require_role
+from app.api.schemas import HiveOut
 
 router = APIRouter()
 
@@ -191,7 +192,7 @@ async def delete_apiculteur(
 
 # ── Scoped hives ──────────────────────────────────────────────────────────────
 
-@router.get("/apiculteurs/{apiculteur_id}/hives")
+@router.get("/apiculteurs/{apiculteur_id}/hives", response_model=list[HiveOut])
 async def get_apiculteur_hives(
     apiculteur_id: int,
     session: AsyncSession = Depends(get_session),

@@ -131,8 +131,17 @@ async def chirpstack_uplink(
             raise HTTPException(status_code=422, detail=f"payload decode error: {exc}")
 
     # ── Persist measurement ──────────────────────────────────────────────────
+
+    # ── Resolve apiculteur_id from hive ─────────────────────────────────────────
+    apiculteur_id: Optional[int] = None
+    if device.hive_id is not None:
+        hive = await session.get(Hive, device.hive_id)
+        if hive:
+            apiculteur_id = hive.apiculteur_id
+            
     m = Measurement(
         device_id     = device.id,
+        apiculteur_id = apiculteur_id,   # ← add this
         ts            = ts_dt,
         temperature_c = decoded.get("temperature_c"),
         humidity_pct  = decoded.get("humidity_pct"),
