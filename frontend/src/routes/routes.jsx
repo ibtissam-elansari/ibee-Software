@@ -1,14 +1,14 @@
 import React from 'react';
-import { createBrowserRouter, Navigate } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 
-import DashboardLayout           from '../layout/DashboardLayout';
-import AuthLayout                from '../layout/AuthLayout';
-import ApiculteurDashboardLayout from '../layout/ApiculteurDashboardLayout';
-import ProtectedRoute            from './ProtectedRoute';
-import useAuthStore              from '../store/useAuthStore';
+import DashboardLayout from '../layout/DashboardLayout';
+import AuthLayout      from '../layout/AuthLayout';
+import ProtectedRoute  from './ProtectedRoute';
+import useAuthStore    from '../store/useAuthStore';
 
 // Pages
 import AuthPage          from '../pages/Auth/AuthPage';
+import HomePage          from '../pages/Home/HomePage';
 import GestionPage       from '../pages/Gestion/GestionPage';
 import HiveAnalyticsPage from '../pages/Analytics/HiveAnalyticsPage';
 import MetricDetailPage  from '../pages/Analytics/MetricDetailPage';
@@ -16,33 +16,33 @@ import AlertStatsPage    from '../pages/AlertStats/AlertStatsPage';
 import SettingsPage      from '../pages/Settings/SettingsPage';
 import ApiculteursPage   from '../pages/Apiculteurs/ApiculteursPage';
 
-// Scoped cooperative pages
-import ApiculteurHomePage    from '../pages/Apiculteurs/scoped/ApiculteurHomePage';
-import ApiculteurGestionPage from '../pages/Apiculteurs/scoped/ApiculteurGestionPage';
-
-/**
- * Smart root redirect:
- * - superuser              → /apiculteurs          (manage all coops)
- * - user/admin with coop   → /apiculteurs/:id/dashboard  (their coop's dashboard)
- * - user/admin without coop → /dashboard           (fallback, shouldn't happen)
- */
+// ── Root redirect ─────────────────────────────────────────────────────────────
+// Sends each role to the correct landing page after login.
 const RootRedirect = () => {
-  const user = useAuthStore(s => s.user);
-  const role = user?.role ?? useAuthStore.getState().role;
+  const user = useAuthStore((s) => s.user);
 
-  if (role === 'superuser') {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === 'superuser') {
+    // Superuser lands on the apiculteurs management page
     return <Navigate to="/apiculteurs" replace />;
   }
-  if (user?.apiculteur_id) {
+
+  if (user.apiculteur_id) {
+    // Admin/User land directly on their coop's dashboard
     return <Navigate to={`/apiculteurs/${user.apiculteur_id}/dashboard`} replace />;
   }
-  // Fallback — user exists but has no coop assigned yet
+
+  // Edge case: authenticated but no coop assigned
   return <Navigate to="/no-coop" replace />;
 };
 
+// ── Router ────────────────────────────────────────────────────────────────────
 export const router = createBrowserRouter([
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // ── Auth (unauthenticated shell) ──────────────────────────────────────────
   {
     element : <AuthLayout />,
     children: [
@@ -50,7 +50,8 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Superuser — manages all cooperatives ──────────────────────────────────
+  // ── Superuser global routes ───────────────────────────────────────────────
+  // Apiculteurs list + platform settings — no apiculteur scope
   {
     element : <ProtectedRoute allowedRoles={['superuser']} />,
     children: [
@@ -59,55 +60,45 @@ export const router = createBrowserRouter([
         children: [
           { path: '/apiculteurs', element: <ApiculteursPage /> },
           { path: '/parametres',  element: <SettingsPage /> },
+          { path: '/support',     element: <div>Support (todo)</div> },
         ],
       },
     ],
   },
 
-  // ── User & Admin — scoped to their cooperative ────────────────────────────
-  // They land on /apiculteurs/:apiculteurId/* just like superuser's scoped view,
-  // but ProtectedRoute ensures only their own coop ID works.
+  // ── Scoped cooperative dashboard ──────────────────────────────────────────
+  // Shared by both superusers (drilling into a coop) and admin/users
+  // (their own coop). ProtectedRoute.scopeGuard ensures admin/users can
+  // only access their own apiculteur_id.
   {
-    element : <ProtectedRoute allowedRoles={['user', 'admin']} />,
+    element : <ProtectedRoute allowedRoles={['superuser', 'admin', 'user']} />,
     children: [
       {
         path   : '/apiculteurs/:apiculteurId',
-        element: <ApiculteurDashboardLayout />,
+        element: <DashboardLayout />,   // same layout — sidebar adapts
         children: [
-          { path: 'dashboard',                       element: <ApiculteurHomePage /> },
-          { path: 'gestion',                         element: <ApiculteurGestionPage /> },
+          // Default redirect: /apiculteurs/:id → /apiculteurs/:id/dashboard
+          { index: true, element: <Navigate to="dashboard" replace /> },
+
+          { path: 'dashboard',                       element: <HomePage /> },
+          { path: 'gestion',                         element: <GestionPage /> },
           { path: 'gestion/:hiveId',                 element: <HiveAnalyticsPage /> },
           { path: 'gestion/:hiveId/details/:metric', element: <MetricDetailPage /> },
           { path: 'statistique-alertes',             element: <AlertStatsPage /> },
+          { path: 'gestion/:hiveId',                    element: <HiveAnalyticsPage /> },
           { path: 'parametres',                      element: <SettingsPage /> },
+          { path: 'parametres/compte',               element: <SettingsPage tab="compte" /> },
+          { path: 'parametres/profile',              element: <SettingsPage tab="profile" /> },
         ],
       },
     ],
   },
 
-  // ── Superuser scoped view (drills into a coop's dashboard) ────────────────
-  {
-    element : <ProtectedRoute allowedRoles={['superuser']} />,
-    children: [
-      {
-        path   : '/apiculteurs/:apiculteurId',
-        element: <ApiculteurDashboardLayout />,
-        children: [
-          { path: 'dashboard',                       element: <ApiculteurHomePage /> },
-          { path: 'gestion',                         element: <ApiculteurGestionPage /> },
-          { path: 'gestion/:hiveId',                 element: <HiveAnalyticsPage /> },
-          { path: 'gestion/:hiveId/details/:metric', element: <MetricDetailPage /> },
-          { path: 'statistique-alertes',             element: <AlertStatsPage /> },
-        ],
-      },
-    ],
-  },
-
-  // ── No coop assigned (edge case) ──────────────────────────────────────────
+  // ── Edge case: user with no coop assigned ─────────────────────────────────
   {
     path   : '/no-coop',
     element: (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#f9f7f4]">
         <div className="text-center p-8 bg-white rounded-2xl border border-gray-100 shadow-sm max-w-sm">
           <p className="text-lg font-bold text-gray-900 mb-2">Compte non configuré</p>
           <p className="text-sm text-gray-400">
@@ -119,7 +110,7 @@ export const router = createBrowserRouter([
     ),
   },
 
-  // ── Root + fallback ───────────────────────────────────────────────────────
+  // ── Root + 404 ────────────────────────────────────────────────────────────
   { path: '/',  element: <RootRedirect /> },
   { path: '*',  element: <RootRedirect /> },
 ]);
