@@ -1,6 +1,7 @@
 // api/hives.js
 import http from './client';
 
+// src/api/hives.js
 // ── Hive CRUD ────────────────────────────────────────────────────────────────
 export const getHives    = ()         => http.get('/api/hives').then(r => r.data);
 export const getHive     = (id)       => http.get(`/api/hives/${id}`).then(r => r.data);

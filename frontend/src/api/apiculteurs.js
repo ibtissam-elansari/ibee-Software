@@ -1,3 +1,4 @@
+// src/api/apiculteurs
 import http from './client';
 
 export const getApiculteurs   = ()           => http.get('/api/apiculteurs').then(r => r.data);
