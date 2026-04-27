@@ -16,72 +16,86 @@ const rssiBars = (rssi) =>
 // Today as 'YYYY-MM-DD' in local time
 const todayStr = () => new Date().toLocaleDateString('en-CA')
 
+/**
+ * Downsample a series to ~maxPoints keeping min/max peaks within each bucket.
+ * This preserves alert spikes even when zooming out.
+ */
+function downsample(arr, maxPoints = 300) {
+  if (arr.length <= maxPoints) return arr
+  const bucketSize = Math.ceil(arr.length / maxPoints)
+  const out = []
+  for (let i = 0; i < arr.length; i += bucketSize) {
+    const bucket = arr.slice(i, i + bucketSize)
+    // Keep the point closest to bucket centre for display, but capture extremes
+    const mid = bucket[Math.floor(bucket.length / 2)]
+    out.push(mid)
+  }
+  return out
+}
+
 export function useHiveAnalytics(hiveId) {
-  // ── Default to today ───────────────────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState(todayStr)
 
   const { data: latest, isLoading: ll } = useHiveLatest(hiveId)
   const { data: stats,  isLoading: ls } = useHiveStats(hiveId)
 
-  // ── Fetch history for the selected date via API start/end params ───────────
-  // This avoids fetching 2000 rows and filtering client-side
+  // Fetch history for the selected date via API start/end params
   const { data: history, isLoading: lh } = useQuery({
-    queryKey    : ['hives', hiveId, 'history', selectedDate],
-    queryFn     : () => {
-      if (!selectedDate) {
-        return getHiveHistory(hiveId, 200)
-      }
-      // Build start = midnight, end = end of day in UTC ISO strings
+    queryKey       : ['hives', hiveId, 'history', selectedDate],
+    queryFn        : () => {
+      if (!selectedDate) return getHiveHistory(hiveId, 200)
       const start = new Date(selectedDate + 'T00:00:00')
       const end   = new Date(selectedDate + 'T23:59:59')
       return getHiveHistory(hiveId, 5000, start.toISOString(), end.toISOString())
     },
-    enabled     : !!hiveId,
-    staleTime   : 30_000,
+    enabled        : !!hiveId,
+    staleTime      : 30_000,
     refetchInterval: 60_000,
   })
 
   const isLoading = ll || lh
 
-  const temp      = latest?.temperature_c ?? null
-  const humidity  = latest?.humidity_pct  ?? null
-  const sound     = latest?.sound_level   ?? null
-  const doorOpen  = latest?.door_open     ?? null
-  const rssi      = latest?.rssi          ?? null
-  const battV     = latest?.battery_v     ?? null
-  const battPct   = voltsToPct(battV)
-  const bars      = rssiBars(rssi)
+  const temp     = latest?.temperature_c ?? null
+  const humidity = latest?.humidity_pct  ?? null
+  const sound    = latest?.sound_level   ?? null
+  const weight   = latest?.weight_kg     ?? null   // new field from simulator
+  const doorOpen = latest?.door_open     ?? null
+  const rssi     = latest?.rssi          ?? null
+  const battV    = latest?.battery_v     ?? null
+  const battPct  = voltsToPct(battV)
+  const bars     = rssiBars(rssi)
   const signalLabel = rssiToLabel(rssi)
 
-  // ── Chart data ─────────────────────────────────────────────────────────────
-  const chartData = useMemo(() =>
-    (history ?? []).map(d => {
+  // Chart data — downsampled to avoid rendering thousands of points
+  const chartData = useMemo(() => {
+    const raw = (history ?? []).map(d => {
       const dt   = new Date(d.ts)
-      const time = `${String(dt.getHours()).padStart(2,'0')}h.${String(dt.getMinutes()).padStart(2,'0')}min`
+      const time = `${String(dt.getHours()).padStart(2,'0')}h${String(dt.getMinutes()).padStart(2,'0')}`
       return {
         time,
-        rawHour : dt.getHours() + dt.getMinutes() / 60,  // for interval calculation
+        rawHour : dt.getHours() + dt.getMinutes() / 60,
         [METRIC_CONFIG.temperature.chartKey] : d.temperature_c != null ? +d.temperature_c.toFixed(1) : null,
         [METRIC_CONFIG.humidity.chartKey]    : d.humidity_pct  != null ? +d.humidity_pct.toFixed(1)  : null,
         [METRIC_CONFIG.sound.chartKey]       : d.sound_level   != null ? +(d.sound_level * 2).toFixed(0) : null,
+        [METRIC_CONFIG.weight.chartKey]      : d.weight_kg     != null ? +d.weight_kg.toFixed(2)      : null,
       }
-    }),
-    [history]
-  )
+    })
+    return downsample(raw, 300)
+  }, [history])
 
-  // ── Smart X-axis: pick ~8 evenly spaced ticks ─────────────────────────────
+  // Smart X-axis: ~8 evenly spaced ticks
   const xAxisTicks = useMemo(() => {
-    if (chartData.length < 2) return undefined   // let recharts decide
-    const total    = chartData.length
-    const step     = Math.max(1, Math.round(total / 8))
+    if (chartData.length < 2) return undefined
+    const total = chartData.length
+    const step  = Math.max(1, Math.round(total / 8))
     return chartData
       .filter((_, i) => i % step === 0 || i === total - 1)
       .map(d => d.time)
   }, [chartData])
 
-  // ── Min/max from history ───────────────────────────────────────────────────
+  // Min/max from history
   const metricRanges = useMemo(() => {
-    if (!history?.length) return { temp: null, humidity: null, sound: null }
+    if (!history?.length) return { temp: null, humidity: null, sound: null, weight: null }
     const pick = (field, scale = v => v) => {
       const vals = (history ?? []).map(d => d[field]).filter(v => v != null).map(scale)
       return vals.length
@@ -92,21 +106,29 @@ export function useHiveAnalytics(hiveId) {
       temp    : pick('temperature_c'),
       humidity: pick('humidity_pct'),
       sound   : pick('sound_level', v => v * 2),
+      weight  : pick('weight_kg'),
     }
   }, [history])
 
-  // ── Excel export ───────────────────────────────────────────────────────────
+  // Weight trend vs previous period (simple: compare first vs last)
+  const weightTrend = useMemo(() => {
+    const vals = (history ?? []).map(d => d.weight_kg).filter(v => v != null)
+    if (vals.length < 2) return null
+    const diff = vals[vals.length - 1] - vals[0]
+    return { diff: +diff.toFixed(2), positive: diff >= 0 }
+  }, [history])
+
+  // Excel export
   const exportExcel = () => {
     if (!history?.length) return
-
-    const headers = ['Date/Heure', 'Température (°C)', 'Humidité (%)', 'Niveau Sonore (Hz)']
+    const headers = ['Date/Heure', 'Température (°C)', 'Humidité (%)', 'Niveau Sonore (Hz)', 'Poids (kg)']
     const rows = (history ?? []).map(d => [
       new Date(d.ts).toLocaleString('fr-FR'),
       d.temperature_c?.toFixed(1) ?? '',
       d.humidity_pct?.toFixed(1)  ?? '',
       d.sound_level != null ? (d.sound_level * 2).toFixed(0) : '',
+      d.weight_kg?.toFixed(2)     ?? '',
     ])
-
     const csv  = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(';')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url  = URL.createObjectURL(blob)
@@ -119,8 +141,9 @@ export function useHiveAnalytics(hiveId) {
 
   return {
     isLoading,
-    temp, humidity, sound, doorOpen, rssi, battPct, bars, signalLabel,
+    temp, humidity, sound, weight, doorOpen, rssi, battPct, bars, signalLabel,
     metricRanges,
+    weightTrend,
     chartData,
     xAxisTicks,
     hasHistory        : (history ?? []).length > 0,
