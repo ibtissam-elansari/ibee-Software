@@ -27,7 +27,9 @@ const Sidebar = ({ role, scopedApiculteur }) => {
       <div className="px-5 py-5 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm font-bold">🐝</span>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M17.5 13.3329V6.66626C17.4994 6.07143 17.1818 5.52201 16.6667 5.22459L10.8333 1.89126C10.3177 1.59354 9.68233 1.59354 9.16667 1.89126L3.33333 5.22459C2.81819 5.52201 2.50061 6.07143 2.5 6.66626V13.3329C2.50061 13.9278 2.81819 14.4772 3.33333 14.7746L9.16667 18.1079C9.68233 18.4056 10.3177 18.4056 10.8333 18.1079L16.6667 14.7746C17.1818 14.4772 17.4994 13.9278 17.5 13.3329" stroke="white" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </div>
           <span className="font-bold text-gray-900 text-lg">IBEE</span>
         </div>
