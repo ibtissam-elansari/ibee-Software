@@ -1,93 +1,105 @@
 import { useState, useMemo } from 'react'
-import { useHiveList, useAllHivesLatest } from '../../../../hooks/useHives'
-import { deriveStatus } from '../lib/hiveUtils'
+import { useQuery }          from '@tanstack/react-query'
+import { useParams }         from 'react-router-dom'
+import { useHiveList, useHiveLatest } from '../../../../hooks/useHives'
+import { getHiveLatest }     from '../../../../api/hives'
 
 const PAGE_SIZE = 8
 
+function useAllHivesWithLatest(apiculteurId) {
+  const { data: hives = [], isLoading, isError } = useHiveList(apiculteurId)
+
+  const latestQuery = useQuery({
+    queryKey       : ['hives-latest-all', apiculteurId, hives.map(h => h.id)],
+    queryFn        : async () => {
+      if (!hives.length) return []
+      const results = await Promise.allSettled(hives.map(h => getHiveLatest(h.id)))
+      return results.map((r, i) => ({
+        ...hives[i],
+        _latest: r.status === 'fulfilled' ? r.value : null,
+      }))
+    },
+    enabled        : hives.length > 0,
+    staleTime      : 10_000,
+    refetchInterval: 15_000,
+  })
+
+  return {
+    hives      : latestQuery.data ?? hives.map(h => ({ ...h, _latest: null })),
+    isLoading  : isLoading || latestQuery.isLoading,
+    isError    : isError   || latestQuery.isError,
+    lastUpdated: latestQuery.dataUpdatedAt,
+  }
+}
+
+function getHiveStatus(latest) {
+  if (!latest) return 'Normale'
+  if (
+    latest.door_open ||
+    (latest.temperature_c ?? 0) > 42 ||
+    (latest.humidity_pct  ?? 0) > 85 ||
+    (latest.battery_v     ?? 9) < 3.2
+  ) return 'Urgente'
+  if (
+    (latest.temperature_c ?? 0) > 38 ||
+    (latest.humidity_pct  ?? 0) > 75 ||
+    (latest.sound_level   ?? 0) > 70
+  ) return 'Attention'
+  return 'Normale'
+}
+
 export function useHivesField() {
-  const { data: hives = [], isLoading, isError, dataUpdatedAt } = useHiveList()
+  const { apiculteurId } = useParams()
 
-  const [search,       setSearch]       = useState('')
-  const [filter,       setFilter]       = useState('Toutes')
-  const [view,         setView]         = useState('list')
-  const [selectedHive, setSelectedHive] = useState(null)
-  const [addModalOpen, setAddModalOpen] = useState(false)
-  const [page,         setPage]         = useState(1)
+  const { hives, isLoading, isError, lastUpdated } = useAllHivesWithLatest(apiculteurId)
 
-  const hiveIds = useMemo(() => hives.map(h => h.id), [hives])
+  const [search,    setSearch]    = useState('')
+  const [filter,    setFilter]    = useState('Toutes')
+  const [view,      setView]      = useState('list')
+  const [page,      setPage]      = useState(1)
+  const [selectedHive,  setSelectedHive]  = useState(null)
+  const [addModalOpen,  setAddModalOpen]  = useState(false)
 
-  // Single query for all latest — same pattern as useDashboardStats
-  const { data: latestList = [], isLoading: latestLoading } = useAllHivesLatest(hiveIds)
-
-  // id → latest measurement map
-  const latestByHiveId = useMemo(() => {
-    const map = {}
-    latestList.forEach(({ hive_id, data }) => {
-      map[hive_id] = data  // null if that hive had no measurements
-    })
-    return map
-  }, [latestList])
-
-  // Enrich hives with derived status + raw latest
-  const enrichedHives = useMemo(() =>
-    hives.map(hive => {
-      const m = latestByHiveId[hive.id]
-      const status = (m != null && !latestLoading)
-        ? deriveStatus(m.temperature_c, m.humidity_pct, m.sound_level, m.door_open)
-        : 'Inconnue'
-      return { ...hive, _status: status, _latest: m ?? null }
-    }),
-    [hives, latestByHiveId, latestLoading]
+  const enriched = useMemo(() =>
+    hives.map(h => ({ ...h, _status: getHiveStatus(h._latest) })),
+    [hives]
   )
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return enrichedHives.filter(h => {
-      const matchesSearch = q === '' || (h.name ?? '').toLowerCase().includes(q)
-      // While loading, show all hives regardless of filter
-      const matchesFilter = latestLoading
-        ? true
-        : filter === 'Toutes' || h._status === filter
-      return matchesSearch && matchesFilter
+    return enriched.filter(h => {
+      const matchSearch = !q || h.name?.toLowerCase().includes(q)
+      const matchFilter = filter === 'Toutes' || h._status === filter
+      return matchSearch && matchFilter
     })
-  }, [enrichedHives, search, filter, latestLoading])
+  }, [enriched, search, filter])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage   = Math.min(page, totalPages)
+  const paginated  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
-  const paginated = useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE
-    return filtered.slice(start, start + PAGE_SIZE)
-  }, [filtered, safePage])
-
-  const lastUpdateLabel = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleTimeString('fr-FR', {
-        hour: '2-digit', minute: '2-digit',
-      })
+  const lastUpdateLabel = lastUpdated
+    ? new Date(lastUpdated).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
     : null
 
-  const handleSetSearch = (v) => { setSearch(v); setPage(1) }
-  const handleSetFilter = (v) => { setFilter(v); setPage(1) }
-
   return {
-    hives: enrichedHives,
-    filtered,
     paginated,
-    isLoading: isLoading || latestLoading,
-    isError,
-    search,       setSearch: handleSetSearch,
-    filter,       setFilter: handleSetFilter,
-    view,         setView,
-    page: safePage,
+    filtered,
+    page         : safePage,
     totalPages,
     setPage,
-    totalCount: filtered.length,
+    totalCount   : filtered.length,
+    isLoading,
+    isError,
+    search,      setSearch,
+    filter,      setFilter,
+    view,        setView,
     selectedHive,
-    openHiveModal  : setSelectedHive,
-    closeHiveModal : () => setSelectedHive(null),
+    openHiveModal : (hive) => setSelectedHive(hive),
+    closeHiveModal: ()     => setSelectedHive(null),
     addModalOpen,
-    openAddModal   : () => setAddModalOpen(true),
-    closeAddModal  : () => setAddModalOpen(false),
+    openAddModal  : ()     => setAddModalOpen(true),
+    closeAddModal : ()     => setAddModalOpen(false),
     lastUpdateLabel,
   }
 }

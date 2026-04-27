@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Bell, SlidersHorizontal } from 'lucide-react';
 import { useNotifications } from '../../../hooks/useNotifications';
 import NotificationItem from './components/Notification';
+import { useParams } from 'react-router-dom';
 
 const Notifications = () => {
-  const { data: notifications = [], isLoading } = useNotifications();
+  const { apiculteurId } = useParams();                              // ← add
+  const { data: notifications = [], isLoading } = useNotifications(apiculteurId); // ← pass it
 
   const [dismissed, setDismissed] = useState(new Set());
   const dismiss = (id) => setDismissed(prev => new Set([...prev, id]));
