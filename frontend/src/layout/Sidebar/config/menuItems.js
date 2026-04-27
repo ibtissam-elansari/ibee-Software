@@ -12,30 +12,24 @@ import {
   MessageSquare,
 } from 'lucide-react';
 
-/**
- * @param {'superuser'|'admin'|'user'} role
- * @param {{ id: number, company_name: string } | null} scopedApiculteur
- * @returns {Array}
- */
 export function getMenuItems(role, scopedApiculteur) {
   const isScoped = !!scopedApiculteur;
 
-  // ── Case 1: Superuser global view (no coop selected) ──────────────────────
+  // ── Superuser global view ──────────────────────────────────────────────────
   if (role === 'superuser' && !isScoped) {
     return [
-      { key: 'apiculteurs', label: 'Gestion des Apiculteurs', path: '/apiculteurs',      icon: Building2     },
-      { key: 'roles',       label: 'Gestion des rôles',       path: '/parametres/roles', icon: Users         },
-      { key: 'support',     label: 'Demande support',         path: '/support',           icon: MessageSquare },
-      { key: 'parametres',  label: 'Paramètres',              path: '/parametres',        icon: Settings      },
+      { key: 'apiculteurs', label: 'Apiculteurs',       path: '/apiculteurs',      icon: Building2,    end: true  },
+      { key: 'roles',       label: 'Gestion des rôles', path: '/parametres/roles', icon: Users,        end: true  },
+      { key: 'support',     label: 'Demande support',   path: '/support',           icon: MessageSquare, end: true },
+      // end: true → only active when path is EXACTLY /parametres/profile, not /parametres/roles
+      { key: 'profile',  label: 'Profile',        path: '/parametres/profile', icon: Settings,   end: true  },
     ];
   }
 
-  // ── Case 2 & 3: Scoped coop dashboard (superuser scoped OR admin/user) ────
+  // ── Scoped coop dashboard (superuser scoped OR admin/user) ─────────────────
   const base = `/apiculteurs/${scopedApiculteur.id}`;
-
   const items = [];
 
-  // Back button — superuser only
   if (role === 'superuser' && isScoped) {
     items.push({
       key   : 'back',
@@ -43,22 +37,29 @@ export function getMenuItems(role, scopedApiculteur) {
       path  : '/apiculteurs',
       icon  : ChevronLeft,
       isBack: true,
+      end   : true,
     });
   }
 
   items.push(
-    { key: 'dashboard', label: 'Dashboard',          path: `${base}/dashboard`,           icon: LayoutDashboard },
-    { key: 'gestion',   label: 'Gestion des ruches', path: `${base}/gestion`,             icon: Wrench          },
-    // NOTE: "Statistiques" is NOT a sidebar item.
-    // It is accessed by clicking a hive card inside GestionPage → HiveAnalyticsPage.
-    { key: 'alerts',    label: 'Alertes',             path: `${base}/statistique-alertes`, icon: BellRing        },
+    { key: 'dashboard', label: 'Dashboard',          path: `${base}/dashboard`,           icon: LayoutDashboard, end: true },
+    { key: 'gestion',   label: 'Gestion des ruches', path: `${base}/gestion`,             icon: Wrench,          end: false },
+    { key: 'alerts',    label: 'Alertes',             path: `${base}/statistique-alertes`, icon: BellRing,        end: true  },
   );
 
-  // Account management — admin/user only
-  if (role !== 'superuser') {
+  if (role === 'admin') {
     items.push(
-      { key: 'compte',  label: 'Gestion des compte', path: `${base}/parametres/compte`,  icon: Settings   },
-      { key: 'profile', label: 'Profile',             path: `${base}/parametres/profile`, icon: UserCircle },
+      // end: true → /parametres/compte does NOT activate this item
+      { key: 'compte',  label: 'Gestion des compte', path: `${base}/parametres/compte`,  icon: Settings,   end: true },
+      // end: true → /parametres/profile does NOT activate 'compte' item
+      { key: 'profile', label: 'Profile',             path: `${base}/parametres/profile`, icon: UserCircle, end: true },
+    );
+  }
+
+  if (role === 'user') {
+    items.push(
+      // end: true → /parametres/profile does NOT activate 'compte' item
+      { key: 'profile', label: 'Profile',             path: `${base}/parametres/profile`, icon: UserCircle, end: true },
     );
   }
 
