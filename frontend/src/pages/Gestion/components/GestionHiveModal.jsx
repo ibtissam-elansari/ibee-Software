@@ -114,6 +114,7 @@ const GestionHiveModal = ({
   updating,
   deleting,
 }) => {
+  if (!modal) return null;
   const { type, hive } = modal;
 
   const [name, setName]           = useState('');

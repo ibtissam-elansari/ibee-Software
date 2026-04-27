@@ -1,22 +1,29 @@
 import React from 'react';
-import { useHivesField } from '../Home/Hives/hooks/useHivesField';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useGestionHives } from './hooks/useGestionHives';
 
-import HiveCard from './components/HiveCard';
-import AddHiveCard from './components/AddHiveCard';
+import HiveCard        from './components/HiveCard';
+import AddHiveCard     from './components/AddHiveCard';
 import GestionHiveModal from './components/GestionHiveModal';
 
 const GestionPage = () => {
-  const { hives, isLoading } = useHivesField();
+  const { apiculteurId } = useParams();
+  const navigate         = useNavigate();
 
   const {
+    hives, isLoading,
     modal, openCreate, openSettings, openDelete, closeModal,
-    handleCreate, handleUpdate, handleDelete,   // ← no handleToggle
+    handleCreate, handleUpdate, handleDelete,
     creating, updating, deleting,
-  } = useGestionHives()
+  } = useGestionHives(Number(apiculteurId));
+
+  const handleHiveClick = (hive) => {
+    // Navigate to HiveAnalyticsPage — always scoped
+    navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`);
+  };
 
   return (
-    <div className="p-6 h-screen  bg-white">
+    <div className="p-6 min-h-full bg-white">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
         <AddHiveCard onClick={openCreate} />
@@ -27,24 +34,27 @@ const GestionPage = () => {
             ))
           : hives.map((hive) => (
               <HiveCard
-                key={hive.id}
-                hive={hive}
-                onSettings={() => openSettings(hive)}
-                onDelete={() => openDelete(hive)}
+                key         = {hive.id}
+                hive        = {hive}
+                onClick     = {() => handleHiveClick(hive)}
+                onSettings  = {() => openSettings(hive)}
+                onDelete    = {() => openDelete(hive)}
               />
             ))}
       </div>
 
-      <GestionHiveModal
-        modal={modal}
-        onClose={closeModal}
-        onCreate={handleCreate}
-        onUpdate={handleUpdate}
-        onDelete={handleDelete}
-        creating={creating}
-        updating={updating}
-        deleting={deleting}
-      />
+      {modal !== null && (
+        <GestionHiveModal
+          modal    = {modal}
+          onClose  = {closeModal}
+          onCreate = {handleCreate}
+          onUpdate = {(hive, data) => handleUpdate(hive.id, data)}
+          onDelete = {(hive) => handleDelete(hive.id)}
+          creating = {creating}
+          updating = {updating}
+          deleting = {deleting}
+        />
+      )}
     </div>
   );
 };
