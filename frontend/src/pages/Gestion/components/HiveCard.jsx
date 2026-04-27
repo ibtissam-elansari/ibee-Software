@@ -2,9 +2,11 @@ import React from 'react';
 import { Settings, Trash2, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useCurrentUserRole } from '../../../hooks/useUsers'; 
+import { useParams } from 'react-router-dom';
 
 const HiveCard = ({ hive, onSettings, onDelete }) => {
   const navigate = useNavigate();
+  const { apiculteurId } = useParams();
   const role = useCurrentUserRole(); 
 
   const isSuperUser = role === 'superuser'; 
@@ -105,7 +107,7 @@ const HiveCard = ({ hive, onSettings, onDelete }) => {
       {/* FOOTER */}
       <div
         className="p-3 flex justify-between items-center cursor-pointer"
-        onClick={() => navigate(`/gestion/${hive.id}`)}
+        onClick={() => navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`)}
       >
         <div>
           <p className="font-semibold">{hive.name}</p>

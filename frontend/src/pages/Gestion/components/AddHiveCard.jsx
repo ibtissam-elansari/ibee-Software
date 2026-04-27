@@ -5,7 +5,7 @@ const AddHiveCard = ({ onClick }) => {
   return (
     <div
       onClick={onClick}
-      className="flex flex-col items-center justify-center rounded-2xl cursor-pointer bg-orange-100 hover:bg-orange-200 transition"
+      className="flex flex-col items-center justify-center rounded-2xl cursor-pointer bg-orange-100 hover:bg-orange-200 transition py-5"
     >
       <span className="text-[#F59E0B] font-semibold mb-4">
         Ajouter une ruche
