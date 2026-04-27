@@ -1,12 +1,15 @@
-import { create } from 'zustand';
+// src/store/useAuthStore.js
+
+import { create }      from 'zustand';
+import { queryClient } from '../queryClient';
 
 const decodeToken = (token) => {
   try { return JSON.parse(atob(token.split('.')[1])); }
   catch { return null; }
 };
 
-const storedToken   = localStorage.getItem('access_token');
-const decoded       = storedToken ? decodeToken(storedToken) : null;
+const storedToken = localStorage.getItem('access_token');
+const decoded     = storedToken ? decodeToken(storedToken) : null;
 
 const initialUser = decoded ? {
   id           : decoded.user_id       ?? null,
@@ -16,7 +19,7 @@ const initialUser = decoded ? {
 } : null;
 
 const useAuthStore = create((set) => ({
-  token        : storedToken  || null,
+  token        : storedToken            || null,
   role         : decoded?.role          || null,
   email        : decoded?.sub           || null,
   userId       : decoded?.user_id       || null,
@@ -39,14 +42,21 @@ const useAuthStore = create((set) => ({
   setUser: (updatedUser) => {
     set(s => ({
       user         : { ...s.user, ...updatedUser },
-      email        : updatedUser.email          ?? s.email,
-      role         : updatedUser.role           ?? s.role,
-      apiculteurId : updatedUser.apiculteur_id  ?? s.apiculteurId,
+      email        : updatedUser.email         ?? s.email,
+      role         : updatedUser.role          ?? s.role,
+      apiculteurId : updatedUser.apiculteur_id ?? s.apiculteurId,
     }));
   },
 
   logout: () => {
     localStorage.removeItem('access_token');
+
+    // Wipe every cached query so the next user never sees stale data
+    queryClient.clear();
+
+    // Clear the superuser scope (dynamic import avoids circular dependency)
+    import('./useScopeStore').then(m => m.default.getState().clearScope());
+
     set({ token: null, role: null, email: null, userId: null, apiculteurId: null, user: null });
   },
 }));
