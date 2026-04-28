@@ -1,33 +1,34 @@
+// pages/AlertStats/AlertStatsPage.jsx
+
 import React from 'react'
 import { useParams } from 'react-router-dom'
 import { Bell, Filter } from 'lucide-react'
 import {
   ResponsiveContainer, AreaChart, Area,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
-import { useAlertStats } from '../../hooks/useAlertStats'
+import { useAlertStats, ALERT_TYPES, TYPE_COLORS, TYPE_LABELS } from '../../hooks/useAlertStats'
 
+// ── Type badge ────────────────────────────────────────────────────────────────
 const TYPE_BADGE = {
-  security    : { label: 'Sécurité',     bg: 'bg-blue-50',   text: 'text-blue-600',  dot: '#2563EB' },
-  temperature : { label: 'Température',  bg: 'bg-red-50',    text: 'text-red-500',   dot: '#EF4444' },
-  humidity    : { label: 'Humidité',     bg: 'bg-blue-50',   text: 'text-blue-500',  dot: '#3B82F6' },
-  battery     : { label: 'Batterie',     bg: 'bg-amber-50',  text: 'text-amber-600', dot: '#D97706' },
-  sound       : { label: 'Sonore',       bg: 'bg-green-50',  text: 'text-green-600', dot: '#16A34A' },
-  geofencing  : { label: 'Localisation', bg: 'bg-red-50',    text: 'text-red-500',   dot: '#EF4444' },
+  security   : { label: 'Sécurité',    bg: 'bg-blue-50',   text: 'text-blue-600',  dot: '#2563EB' },
+  temperature: { label: 'Température', bg: 'bg-red-50',    text: 'text-red-500',   dot: '#EF4444' },
+  humidity   : { label: 'Humidité',    bg: 'bg-blue-50',   text: 'text-blue-500',  dot: '#3B82F6' },
+  battery    : { label: 'Batterie',    bg: 'bg-amber-50',  text: 'text-amber-600', dot: '#D97706' },
+  sound      : { label: 'Sonore',      bg: 'bg-green-50',  text: 'text-green-600', dot: '#16A34A' },
 }
-
 const TypeBadge = ({ type }) => {
   const cfg = TYPE_BADGE[type] ?? TYPE_BADGE.security
   return (
     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full
                       text-[11px] font-semibold whitespace-nowrap ${cfg.bg} ${cfg.text}`}>
       {cfg.label}
-      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: cfg.dot }} />
+      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.dot }} />
     </span>
   )
 }
 
+// ── Range tab ─────────────────────────────────────────────────────────────────
 const RangeTab = ({ id, label, active, onClick }) => (
   <button
     onClick={() => onClick(id)}
@@ -38,30 +39,96 @@ const RangeTab = ({ id, label, active, onClick }) => (
   </button>
 )
 
-const AreaTooltip = ({ active, payload, label }) => {
+// ── Timeline tooltip — shows total + per-type breakdown ───────────────────────
+const TimelineTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
+  const d = payload[0]?.payload
+  if (!d) return null
+
+  const breakdown   = d.breakdown   ?? {}
+  const percentages = d.percentages ?? {}
+  const hasBreakdown = Object.values(breakdown).some(v => v > 0)
+
   return (
-    <div className="bg-white border border-gray-100 rounded-xl px-3 py-2 text-xs shadow-lg">
-      <p className="text-gray-400 mb-1">{label}</p>
-      <p className="font-semibold text-gray-800">{payload[0].value} alertes</p>
+    <div className="bg-gray-900 text-white rounded-xl px-4 py-3 text-xs shadow-xl min-w-[160px]">
+      {/* Date + total */}
+      <p className="text-gray-400 text-[10px] mb-1">{label}</p>
+      <p className="font-bold text-base mb-2">{d.count} alertes</p>
+
+      {/* Per-type breakdown */}
+      {hasBreakdown && (
+        <div className="flex flex-col gap-1.5 border-t border-white/10 pt-2">
+          {ALERT_TYPES.filter(t => (breakdown[t] ?? 0) > 0).map(t => (
+            <div key={t} className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: TYPE_COLORS[t] }} />
+                <span className="text-gray-300">{TYPE_LABELS[t]}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold">{breakdown[t]}</span>
+                <span className="text-gray-500 text-[10px]">{percentages[t]}%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
+// ── Stacked bar tooltip ───────────────────────────────────────────────────────
+const StackedTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null
+  const total = payload.reduce((s, p) => s + (p.value ?? 0), 0)
+  if (total === 0) return null
+
+  return (
+    <div className="bg-gray-900 text-white rounded-xl px-4 py-3 text-xs shadow-xl min-w-[160px]">
+      <p className="text-gray-400 text-[10px] mb-1">{label}</p>
+      <p className="font-bold text-base mb-2">{total} alertes urgentes</p>
+      <div className="flex flex-col gap-1.5 border-t border-white/10 pt-2">
+        {payload.filter(p => (p.value ?? 0) > 0).map(p => (
+          <div key={p.dataKey} className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.fill }} />
+              <span className="text-gray-300">{TYPE_LABELS[p.dataKey] ?? p.dataKey}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold">{p.value}</span>
+              <span className="text-gray-500 text-[10px]">
+                {total > 0 ? Math.round((p.value / total) * 100) : 0}%
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Custom legend for stacked bar ─────────────────────────────────────────────
+const StackedLegend = () => (
+  <div className="flex items-center gap-4 flex-wrap mt-3">
+    {ALERT_TYPES.map(t => (
+      <div key={t} className="flex items-center gap-1.5">
+        <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: TYPE_COLORS[t] }} />
+        <span className="text-[11px] text-gray-500">{TYPE_LABELS[t]}</span>
+      </div>
+    ))}
+  </div>
+)
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 const AlertStatsPage = () => {
-  // Read apiculteurId from URL — scopes all alert data to this coop
   const { apiculteurId } = useParams()
 
   const {
-    range, setRange,
-    startDate, setStartDate,
-    endDate,   setEndDate,
+    range, setRange, startDate, setStartDate, endDate, setEndDate,
     timelineData, timelineLoading,
-    weeklyRange, setWeeklyRange,
-    weeklyData, weeklyLoading, weekLabel,
+    weeklyRange, setWeeklyRange, weeklyData, weeklyLoading, weekLabel,
     alerts, alertsLoading, totalToday,
-    typeFilter, setTypeFilter,
-    impFilter,  setImpFilter,
+    typeFilter, setTypeFilter, impFilter, setImpFilter,
   } = useAlertStats(Number(apiculteurId))
 
   return (
@@ -70,56 +137,48 @@ const AlertStatsPage = () => {
       {/* ── LEFT COLUMN ── */}
       <div className="flex-1 flex flex-col gap-5 min-w-0">
 
-        {/* Shared date range + range tabs */}
+        {/* Date range controls */}
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-xs text-gray-400 font-medium">Période :</span>
           <div className="flex items-center gap-2">
-            <input
-              type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-              className="h-8 px-3 border border-gray-200 rounded-lg text-xs
-                         text-gray-500 focus:outline-none focus:border-amber-400 bg-white"
-            />
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+              className="h-8 px-3 border border-gray-200 rounded-lg text-xs text-gray-500
+                         focus:outline-none focus:border-amber-400 bg-white" />
             <span className="text-gray-300 text-sm">→</span>
-            <input
-              type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-              className="h-8 px-3 border border-gray-200 rounded-lg text-xs
-                         text-gray-500 focus:outline-none focus:border-amber-400 bg-white"
-            />
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+              className="h-8 px-3 border border-gray-200 rounded-lg text-xs text-gray-500
+                         focus:outline-none focus:border-amber-400 bg-white" />
           </div>
           <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5 ml-1">
             {['7j', '15j', 'Mois'].map(r => (
-              <RangeTab
-                key={r} id={r} label={r}
+              <RangeTab key={r} id={r} label={r}
                 active={range === r && !startDate && !endDate}
-                onClick={(v) => { setRange(v); setStartDate(''); setEndDate('') }}
-              />
+                onClick={(v) => { setRange(v); setStartDate(''); setEndDate('') }} />
             ))}
           </div>
           {(startDate || endDate) && (
-            <button
-              onClick={() => { setStartDate(''); setEndDate('') }}
-              className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
-            >
+            <button onClick={() => { setStartDate(''); setEndDate('') }}
+              className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
               Réinitialiser
             </button>
           )}
         </div>
 
-        {/* Timeline chart */}
+        {/* ── Timeline chart ── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-gray-800">
               Nombre d'alertes en fonction du temps
             </h2>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              Présentation visuelle des alertes reçues à travers la ruche
+              Passez la souris sur le graphique pour voir le détail par type d'alerte
             </p>
           </div>
+
           {timelineLoading ? (
             <div className="h-72 bg-gray-50 rounded-xl animate-pulse" />
           ) : timelineData.length === 0 ? (
-            <div className="h-72 flex items-center justify-center
-                            text-sm text-gray-300 bg-gray-50 rounded-xl">
+            <div className="h-72 flex items-center justify-center text-sm text-gray-300 bg-gray-50 rounded-xl">
               Aucune alerte sur cette période
             </div>
           ) : (
@@ -132,9 +191,14 @@ const AlertStatsPage = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="4 4" stroke="rgba(0,0,0,0.05)" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip content={<AreaTooltip />} cursor={{ stroke: '#E5E7EB', strokeWidth: 1 }} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                  axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                  axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip
+                  content={<TimelineTooltip />}
+                  cursor={{ stroke: '#E5E7EB', strokeWidth: 1 }}
+                />
                 <Area type="monotone" dataKey="count" stroke="#F472B6" strokeWidth={2}
                   fill="url(#alertGrad)"
                   dot={{ fill: '#F472B6', r: 3, strokeWidth: 0 }}
@@ -144,12 +208,17 @@ const AlertStatsPage = () => {
           )}
         </div>
 
-        {/* Weekly bar chart */}
+        {/* ── Stacked weekly bar chart ── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-800">
-              Aperçu hebdomadaire des alertes urgentes
-            </h2>
+            <div>
+              <h2 className="text-sm font-semibold text-gray-800">
+                Aperçu hebdomadaire des alertes urgentes
+              </h2>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Répartition par type d'alerte sur la période
+              </p>
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 px-3 py-1 rounded-lg">
                 {weekLabel}
@@ -161,29 +230,47 @@ const AlertStatsPage = () => {
               </div>
             </div>
           </div>
+
           {weeklyLoading ? (
             <div className="h-72 bg-gray-50 rounded-xl animate-pulse" />
           ) : (
-            <ResponsiveContainer width="100%" height={290}>
-              <BarChart data={weeklyData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barCategoryGap="40%">
-                <CartesianGrid strokeDasharray="4 4" stroke="rgba(0,0,0,0.05)" vertical={false} />
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ background: 'white', border: '1px solid #F3F4F6', borderRadius: 12, fontSize: 12 }}
-                  cursor={{ fill: 'rgba(0,0,0,0.03)' }}
-                />
-                <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} name="Alertes urgentes" />
-              </BarChart>
-            </ResponsiveContainer>
+            <>
+              <ResponsiveContainer width="100%" height={270}>
+                <BarChart data={weeklyData}
+                  margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+                  barCategoryGap="40%">
+                  <CartesianGrid strokeDasharray="4 4" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9CA3AF' }}
+                    axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                    axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip content={<StackedTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
+
+                  {/* Stack one Bar per type — bottom type gets rounded bottom corners */}
+                  {ALERT_TYPES.map((type, i) => (
+                    <Bar
+                      key      = {type}
+                      dataKey  = {type}
+                      name     = {TYPE_LABELS[type]}
+                      stackId  = "alerts"
+                      fill     = {TYPE_COLORS[type]}
+                      // Round top corners only on the last (top) stack segment
+                      radius   = {i === ALERT_TYPES.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+
+              {/* Legend */}
+              <StackedLegend />
+            </>
           )}
         </div>
       </div>
 
       {/* ── RIGHT COLUMN — alert log ── */}
       <div
-        className="w-80 flex-shrink-0 bg-white rounded-2xl border border-gray-100
-                   shadow-sm flex flex-col"
+        className="w-80 flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col"
         style={{ height: 'calc(100vh - 96px)', position: 'sticky', top: '24px' }}
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
@@ -238,16 +325,16 @@ const AlertStatsPage = () => {
           ) : (
             alerts.map((alert) => {
               const isUrgent = alert.importance === 'urgente'
-              const dt       = new Date(alert.ts)
+              const dt = new Date(alert.ts)
               return (
-                <div
-                  key={alert.id}
+                <div key={alert.id}
                   className={`grid grid-cols-3 items-center px-4 py-3 border-b border-gray-50
                               transition-colors
-                              ${isUrgent ? 'bg-red-50/40 hover:bg-red-50/70' : 'bg-white hover:bg-gray-50'}`}
-                >
+                              ${isUrgent ? 'bg-red-50/40 hover:bg-red-50/70' : 'bg-white hover:bg-gray-50'}`}>
                   <span className="text-[11px] text-gray-600">{dt.toLocaleDateString('fr-FR')}</span>
-                  <span className="text-[11px] text-gray-500">{dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="text-[11px] text-gray-500">
+                    {dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                   <TypeBadge type={alert.type} />
                 </div>
               )
