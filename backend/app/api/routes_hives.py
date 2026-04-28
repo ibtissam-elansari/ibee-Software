@@ -71,7 +71,6 @@ async def list_hives(
 ):
     q = select(Hive).where(Hive.deleted_at.is_(None)).order_by(Hive.created_at)
 
-    # Non-superusers only see hives of their apiculteur
     if current["role"] != "superuser":
         q = q.where(Hive.apiculteur_id == current["apiculteur_id"])
 
@@ -118,7 +117,7 @@ async def delete_hive(
     await session.commit()
 
 
-# ── THRESHOLD MANAGEMENT (admin+ for their apiculteur's hives) ───────────────
+# ── THRESHOLD MANAGEMENT ─────────────────────────────────────────────────────
 
 @router.get("/hives/{hive_id}/thresholds", response_model=HiveThresholdOut)
 async def get_hive_thresholds(
@@ -133,7 +132,6 @@ async def get_hive_thresholds(
         select(HiveThreshold).where(HiveThreshold.hive_id == hive_id)
     )).scalars().first()
 
-    # Return defaults with hive_id filled in if no custom row exists
     if row is None:
         return HiveThresholdOut(
             hive_id        = hive_id,
@@ -143,6 +141,7 @@ async def get_hive_thresholds(
             hum_urgente    = GLOBAL_DEFAULTS.hum_urgente,
             battery_v      = GLOBAL_DEFAULTS.battery_v,
             sound_level    = GLOBAL_DEFAULTS.sound_level,
+            weight_drop_kg = None,   # not set by default
             updated_at     = hive.created_at,
         )
     return row
@@ -155,11 +154,6 @@ async def upsert_hive_thresholds(
     session : AsyncSession = Depends(get_session),
     current : dict         = Depends(require_min_role("admin")),
 ):
-    """
-    Admin can set thresholds for hives in their apiculteur.
-    Superuser can set thresholds for any hive.
-    Uses upsert — creates the row if absent, updates if present.
-    """
     hive = await _get_hive_or_404(hive_id, session)
     require_hive_access(current, hive)
 
@@ -168,7 +162,6 @@ async def upsert_hive_thresholds(
     )).scalars().first()
 
     if row is None:
-        # Start from global defaults, then apply payload
         row = HiveThreshold(
             hive_id        = hive_id,
             temp_attention = GLOBAL_DEFAULTS.temp_attention,
@@ -177,6 +170,7 @@ async def upsert_hive_thresholds(
             hum_urgente    = GLOBAL_DEFAULTS.hum_urgente,
             battery_v      = GLOBAL_DEFAULTS.battery_v,
             sound_level    = GLOBAL_DEFAULTS.sound_level,
+            weight_drop_kg = None,
         )
 
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -197,7 +191,6 @@ async def reset_hive_thresholds(
     session : AsyncSession = Depends(get_session),
     current : dict         = Depends(require_min_role("admin")),
 ):
-    """Deletes the custom threshold row — hive reverts to global defaults."""
     hive = await _get_hive_or_404(hive_id, session)
     require_hive_access(current, hive)
 
@@ -241,6 +234,7 @@ async def hive_latest(
         humidity_pct   = m.humidity_pct,
         sound_level    = m.sound_level,
         door_open      = m.door_open,
+        weight_kg      = m.weight_kg,       # NEW
         gps_lat        = m.gps_lat,
         gps_lng        = m.gps_lng,
         battery_v      = m.battery_v,
@@ -295,6 +289,10 @@ async def hive_stats(
             func.max(Measurement.battery_v)          .label("max_batt"),
             func.sum(Measurement.sound_level)        .label("sound_sum"),
             func.sum(Measurement.door_open.cast(int)).label("door_sum"),
+            # Weight aggregates (NEW)
+            func.avg(Measurement.weight_kg)          .label("avg_weight"),
+            func.min(Measurement.weight_kg)          .label("min_weight"),
+            func.max(Measurement.weight_kg)          .label("max_weight"),
             func.min(Measurement.ts)                 .label("first_seen"),
             func.max(Measurement.ts)                 .label("last_seen"),
         )
@@ -306,12 +304,15 @@ async def hive_stats(
     return HiveStatsOut(
         hive_id            = hive_id,
         total_measurements = row.total or 0,
-        avg_temperature_c  = round(row.avg_temp, 2) if row.avg_temp else None,
-        avg_humidity_pct   = round(row.avg_hum,  2) if row.avg_hum  else None,
+        avg_temperature_c  = round(row.avg_temp,   2) if row.avg_temp   else None,
+        avg_humidity_pct   = round(row.avg_hum,    2) if row.avg_hum    else None,
         min_battery_v      = row.min_batt,
         max_battery_v      = row.max_batt,
-        sound_events       = row.sound_sum    or 0,
-        door_open_events   = row.door_sum     or 0,
+        sound_events       = row.sound_sum  or 0,
+        door_open_events   = row.door_sum   or 0,
+        avg_weight_kg      = round(row.avg_weight, 3) if row.avg_weight else None,   # NEW
+        min_weight_kg      = round(row.min_weight, 3) if row.min_weight else None,   # NEW
+        max_weight_kg      = round(row.max_weight, 3) if row.max_weight else None,   # NEW
         first_seen         = row.first_seen,
         last_seen          = row.last_seen,
     )
@@ -343,7 +344,6 @@ async def hive_stream(
     session : AsyncSession = Depends(get_session),
     current : dict         = Depends(get_current_user),
 ):
-    # Validate access before opening the stream
     hive = await _get_hive_or_404(hive_id, session)
     require_hive_access(current, hive)
 
@@ -358,7 +358,7 @@ async def hive_stream(
     )
 
 
-# ── DEVICE ROUTES (superuser only) ──────────────────────────────────────────
+# ── DEVICE ROUTES (superuser only) ───────────────────────────────────────────
 
 @router.post("/devices", response_model=DeviceOut, status_code=201)
 async def create_or_attach_device(
