@@ -1,13 +1,13 @@
 // pages/AlertStats/AlertStatsPage.jsx
-
 import React from 'react'
 import { useParams } from 'react-router-dom'
-import { Bell, Filter } from 'lucide-react'
+import { Bell, Filter, ChevronDown } from 'lucide-react'
 import {
   ResponsiveContainer, AreaChart, Area,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
 import { useAlertStats, ALERT_TYPES, TYPE_COLORS, TYPE_LABELS } from '../../hooks/useAlertStats'
+import { useHiveList } from '../../hooks/useHives'
 
 // ── Type badge ────────────────────────────────────────────────────────────────
 const TYPE_BADGE = {
@@ -39,23 +39,39 @@ const RangeTab = ({ id, label, active, onClick }) => (
   </button>
 )
 
-// ── Timeline tooltip — shows total + per-type breakdown ───────────────────────
+// ── Hive selector ─────────────────────────────────────────────────────────────
+const HiveSelector = ({ hives, selectedHiveId, onChange, loading }) => (
+  <div className="relative">
+    <select
+      value={selectedHiveId ?? ''}
+      onChange={e => onChange(e.target.value ? Number(e.target.value) : null)}
+      disabled={loading}
+      className="h-8 pl-3 pr-8 border border-gray-200 rounded-lg text-xs text-gray-600
+                 focus:outline-none focus:border-amber-400 bg-white cursor-pointer
+                 appearance-none disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px]"
+    >
+      <option value="">Toutes les ruches</option>
+      {hives.map(h => (
+        <option key={h.id} value={h.id}>{h.name}</option>
+      ))}
+    </select>
+    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5
+                            text-gray-400 pointer-events-none" />
+  </div>
+)
+
+// ── Timeline tooltip ──────────────────────────────────────────────────────────
 const TimelineTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
   const d = payload[0]?.payload
   if (!d) return null
-
   const breakdown   = d.breakdown   ?? {}
   const percentages = d.percentages ?? {}
   const hasBreakdown = Object.values(breakdown).some(v => v > 0)
-
   return (
     <div className="bg-gray-900 text-white rounded-xl px-4 py-3 text-xs shadow-xl min-w-[160px]">
-      {/* Date + total */}
       <p className="text-gray-400 text-[10px] mb-1">{label}</p>
       <p className="font-bold text-base mb-2">{d.count} alertes</p>
-
-      {/* Per-type breakdown */}
       {hasBreakdown && (
         <div className="flex flex-col gap-1.5 border-t border-white/10 pt-2">
           {ALERT_TYPES.filter(t => (breakdown[t] ?? 0) > 0).map(t => (
@@ -82,7 +98,6 @@ const StackedTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
   const total = payload.reduce((s, p) => s + (p.value ?? 0), 0)
   if (total === 0) return null
-
   return (
     <div className="bg-gray-900 text-white rounded-xl px-4 py-3 text-xs shadow-xl min-w-[160px]">
       <p className="text-gray-400 text-[10px] mb-1">{label}</p>
@@ -107,7 +122,7 @@ const StackedTooltip = ({ active, payload, label }) => {
   )
 }
 
-// ── Custom legend for stacked bar ─────────────────────────────────────────────
+// ── Custom legend ─────────────────────────────────────────────────────────────
 const StackedLegend = () => (
   <div className="flex items-center gap-4 flex-wrap mt-3">
     {ALERT_TYPES.map(t => (
@@ -122,14 +137,19 @@ const StackedLegend = () => (
 // ── Page ──────────────────────────────────────────────────────────────────────
 const AlertStatsPage = () => {
   const { apiculteurId } = useParams()
+  const numericApiculteurId = Number(apiculteurId)
+
+  // Hive list for the selector
+  const { data: hives = [], isLoading: hivesLoading } = useHiveList(numericApiculteurId)
 
   const {
     range, setRange, startDate, setStartDate, endDate, setEndDate,
+    selectedHiveId, setSelectedHiveId,
     timelineData, timelineLoading,
     weeklyRange, setWeeklyRange, weeklyData, weeklyLoading, weekLabel,
     alerts, alertsLoading, totalToday,
     typeFilter, setTypeFilter, impFilter, setImpFilter,
-  } = useAlertStats(Number(apiculteurId))
+  } = useAlertStats(numericApiculteurId)
 
   return (
     <div className="flex gap-5 p-6" style={{ background: '#FDFAF4', minHeight: '100%' }}>
@@ -137,8 +157,20 @@ const AlertStatsPage = () => {
       {/* ── LEFT COLUMN ── */}
       <div className="flex-1 flex flex-col gap-5 min-w-0">
 
-        {/* Date range controls */}
+        {/* ── Filter bar ── */}
         <div className="flex items-center gap-3 flex-wrap">
+
+          {/* Hive selector */}
+          <HiveSelector
+            hives={hives}
+            selectedHiveId={selectedHiveId}
+            onChange={setSelectedHiveId}
+            loading={hivesLoading}
+          />
+
+          <div className="w-px h-5 bg-gray-200" />
+
+          {/* Date range */}
           <span className="text-xs text-gray-400 font-medium">Période :</span>
           <div className="flex items-center gap-2">
             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
@@ -149,7 +181,7 @@ const AlertStatsPage = () => {
               className="h-8 px-3 border border-gray-200 rounded-lg text-xs text-gray-500
                          focus:outline-none focus:border-amber-400 bg-white" />
           </div>
-          <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5 ml-1">
+          <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5">
             {['7j', '15j', 'Mois'].map(r => (
               <RangeTab key={r} id={r} label={r}
                 active={range === r && !startDate && !endDate}
@@ -169,9 +201,14 @@ const AlertStatsPage = () => {
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-gray-800">
               Nombre d'alertes en fonction du temps
+              {selectedHiveId && (
+                <span className="ml-2 font-normal text-amber-600">
+                  — {hives.find(h => h.id === selectedHiveId)?.name}
+                </span>
+              )}
             </h2>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              Passez la souris sur le graphique pour voir le détail par type d'alerte
+              Passez la souris sur le graphique pour voir le détail par type
             </p>
           </div>
 
@@ -195,10 +232,7 @@ const AlertStatsPage = () => {
                   axisLine={false} tickLine={false} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }}
                   axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip
-                  content={<TimelineTooltip />}
-                  cursor={{ stroke: '#E5E7EB', strokeWidth: 1 }}
-                />
+                <Tooltip content={<TimelineTooltip />} cursor={{ stroke: '#E5E7EB', strokeWidth: 1 }} />
                 <Area type="monotone" dataKey="count" stroke="#F472B6" strokeWidth={2}
                   fill="url(#alertGrad)"
                   dot={{ fill: '#F472B6', r: 3, strokeWidth: 0 }}
@@ -208,7 +242,7 @@ const AlertStatsPage = () => {
           )}
         </div>
 
-        {/* ── Stacked weekly bar chart ── */}
+        {/* ── Weekly stacked bar ── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -245,23 +279,13 @@ const AlertStatsPage = () => {
                   <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }}
                     axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip content={<StackedTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
-
-                  {/* Stack one Bar per type — bottom type gets rounded bottom corners */}
                   {ALERT_TYPES.map((type, i) => (
-                    <Bar
-                      key      = {type}
-                      dataKey  = {type}
-                      name     = {TYPE_LABELS[type]}
-                      stackId  = "alerts"
-                      fill     = {TYPE_COLORS[type]}
-                      // Round top corners only on the last (top) stack segment
-                      radius   = {i === ALERT_TYPES.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                    />
+                    <Bar key={type} dataKey={type} name={TYPE_LABELS[type]}
+                      stackId="alerts" fill={TYPE_COLORS[type]}
+                      radius={i === ALERT_TYPES.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]} />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
-
-              {/* Legend */}
               <StackedLegend />
             </>
           )}
@@ -283,6 +307,7 @@ const AlertStatsPage = () => {
           <span className="text-xs text-gray-400">{totalToday} alertes</span>
         </div>
 
+        {/* Type + importance filters */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 flex-shrink-0">
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
             className="flex-1 h-7 px-2 border border-gray-200 rounded-lg text-[11px]
@@ -307,7 +332,7 @@ const AlertStatsPage = () => {
         <div className="grid grid-cols-3 px-4 py-2 border-b border-gray-100
                         text-[10px] font-semibold uppercase tracking-wider text-gray-400 flex-shrink-0">
           <span>Date</span>
-          <span>Temps</span>
+          <span>Heure</span>
           <span>Type</span>
         </div>
 
@@ -319,11 +344,12 @@ const AlertStatsPage = () => {
               ))}
             </div>
           ) : alerts.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-sm text-gray-300">
-              Aucune alerte
+            <div className="flex flex-col items-center justify-center h-32 gap-2">
+              <Bell className="w-6 h-6 text-green-300" />
+              <p className="text-sm text-gray-300">Aucune alerte</p>
             </div>
           ) : (
-            alerts.map((alert) => {
+            alerts.map(alert => {
               const isUrgent = alert.importance === 'urgente'
               const dt = new Date(alert.ts)
               return (
@@ -331,7 +357,9 @@ const AlertStatsPage = () => {
                   className={`grid grid-cols-3 items-center px-4 py-3 border-b border-gray-50
                               transition-colors
                               ${isUrgent ? 'bg-red-50/40 hover:bg-red-50/70' : 'bg-white hover:bg-gray-50'}`}>
-                  <span className="text-[11px] text-gray-600">{dt.toLocaleDateString('fr-FR')}</span>
+                  <span className="text-[11px] text-gray-600">
+                    {dt.toLocaleDateString('fr-FR')}
+                  </span>
                   <span className="text-[11px] text-gray-500">
                     {dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                   </span>
