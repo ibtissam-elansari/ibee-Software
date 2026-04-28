@@ -1,3 +1,5 @@
+// frontend/src/pages/Analytics/hooks/useMetricDetail
+
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getHiveHistory } from '../../../api/hives'
