@@ -65,19 +65,21 @@ def _to_alert_log(
 
 
 async def _fetch_alert_rows(
-    session      : AsyncSession,
-    current      : dict,
-    start        : datetime,
-    end          : datetime,
-    hive_id      : Optional[int] = None,
+    session       : AsyncSession,
+    current       : dict,
+    start         : datetime,
+    end           : datetime,
+    hive_id       : Optional[int] = None,
+    apiculteur_id : Optional[int] = None,
 ):
     """
     Returns (Measurement, Hive, HiveThreshold|None) tuples for all
     threshold-crossing measurements in [start, end], scoped by role.
+
+    Scoping rules:
+      - non-superuser  → always filtered to their own apiculteur (backend enforced)
+      - superuser      → filtered to apiculteur_id if provided, otherwise all hives
     """
-    # Use global defaults for the WHERE filter (conservative — a custom
-    # threshold may be lower, but we'd need per-row comparison for that;
-    # post-filter handles the edge case correctly).
     gd = GLOBAL_DEFAULTS
     q = (
         select(Measurement, Hive, HiveThreshold)
@@ -98,7 +100,11 @@ async def _fetch_alert_rows(
     )
 
     if current["role"] != "superuser":
+        # Non-superusers are always restricted to their own apiculteur
         q = q.where(Hive.apiculteur_id == current["apiculteur_id"])
+    elif apiculteur_id:
+        # Superuser drilling into a specific apiculteur's dashboard
+        q = q.where(Hive.apiculteur_id == apiculteur_id)
 
     if hive_id:
         q = q.where(Device.hive_id == hive_id)
@@ -108,20 +114,21 @@ async def _fetch_alert_rows(
 
 @router.get("/alert-stats/log", response_model=list[AlertLogItem])
 async def get_alert_log(
-    start     : Optional[datetime] = Query(default=None),
-    end       : Optional[datetime] = Query(default=None),
-    hive_id   : Optional[int]      = Query(default=None),
-    type_     : Optional[str]      = Query(default=None, alias="type"),
-    importance: Optional[str]      = Query(default=None),
-    limit     : int                = Query(default=200, ge=1, le=2000),
-    session   : AsyncSession       = Depends(get_session),
-    current   : dict               = Depends(get_current_user),
+    start         : Optional[datetime] = Query(default=None),
+    end           : Optional[datetime] = Query(default=None),
+    hive_id       : Optional[int]      = Query(default=None),
+    apiculteur_id : Optional[int]      = Query(default=None),
+    type_         : Optional[str]      = Query(default=None, alias="type"),
+    importance    : Optional[str]      = Query(default=None),
+    limit         : int                = Query(default=200, ge=1, le=2000),
+    session       : AsyncSession       = Depends(get_session),
+    current       : dict               = Depends(get_current_user),
 ):
     now    = datetime.now(timezone.utc)
     start_ = start or (now - timedelta(days=1))
     end_   = end   or now
 
-    rows = await _fetch_alert_rows(session, current, start_, end_, hive_id)
+    rows = await _fetch_alert_rows(session, current, start_, end_, hive_id, apiculteur_id)
 
     alerts: list[AlertLogItem] = []
     for m, hive, threshold_row in rows:
@@ -142,17 +149,18 @@ async def get_alert_log(
 
 @router.get("/alert-stats/daily", response_model=list[DailyAlertCount])
 async def get_daily_alert_counts(
-    start   : Optional[datetime] = Query(default=None),
-    end     : Optional[datetime] = Query(default=None),
-    hive_id : Optional[int]      = Query(default=None),
-    session : AsyncSession       = Depends(get_session),
-    current : dict               = Depends(get_current_user),
+    start         : Optional[datetime] = Query(default=None),
+    end           : Optional[datetime] = Query(default=None),
+    hive_id       : Optional[int]      = Query(default=None),
+    apiculteur_id : Optional[int]      = Query(default=None),
+    session       : AsyncSession       = Depends(get_session),
+    current       : dict               = Depends(get_current_user),
 ):
     now    = datetime.now(timezone.utc)
     start_ = start or (now - timedelta(days=30))
     end_   = end   or now
 
-    rows   = await _fetch_alert_rows(session, current, start_, end_, hive_id)
+    rows   = await _fetch_alert_rows(session, current, start_, end_, hive_id, apiculteur_id)
     counts: dict[str, int] = {}
 
     for m, hive, threshold_row in rows:
@@ -173,16 +181,17 @@ async def get_daily_alert_counts(
 
 @router.get("/alert-stats/weekly", response_model=list[WeeklyBarItem])
 async def get_weekly_urgent_counts(
-    start   : Optional[datetime] = Query(default=None),
-    end     : Optional[datetime] = Query(default=None),
-    session : AsyncSession       = Depends(get_session),
-    current : dict               = Depends(get_current_user),
+    start         : Optional[datetime] = Query(default=None),
+    end           : Optional[datetime] = Query(default=None),
+    apiculteur_id : Optional[int]      = Query(default=None),
+    session       : AsyncSession       = Depends(get_session),
+    current       : dict               = Depends(get_current_user),
 ):
     now    = datetime.now(timezone.utc)
     start_ = start or (now - timedelta(days=7))
     end_   = end   or now
 
-    rows   = await _fetch_alert_rows(session, current, start_, end_)
+    rows   = await _fetch_alert_rows(session, current, start_, end_, apiculteur_id=apiculteur_id)
     counts = [0] * 7
 
     for m, hive, threshold_row in rows:
