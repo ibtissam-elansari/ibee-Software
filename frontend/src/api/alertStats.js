@@ -7,11 +7,11 @@ export const getAlertLog = (params = {}) =>
 export const getDailyAlertCounts = (params = {}) =>
   http.get('/api/alert-stats/daily', { params }).then(r => r.data)
 
-// Added apiculteurId param — passed as apiculteur_id query param to backend
-export const getWeeklyUrgentCounts = (start, end, apiculteurId) => {
+export const getWeeklyUrgentCounts = (start, end, apiculteurId, hiveId) => {
   const params = {}
-  if (start)        params.start          = start
-  if (end)          params.end            = end
-  if (apiculteurId) params.apiculteur_id  = apiculteurId
+  if (start)         params.start          = start
+  if (end)           params.end            = end
+  if (apiculteurId)  params.apiculteur_id  = apiculteurId
+  if (hiveId)        params.hive_id        = hiveId
   return http.get('/api/alert-stats/weekly', { params }).then(r => r.data)
 }
