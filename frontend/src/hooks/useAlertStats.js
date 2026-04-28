@@ -1,18 +1,20 @@
-// hooks/useAlertStats.js
+// frontend/src/hooks/userAlertStats
 
 import { useState, useMemo } from 'react'
-import { useQuery }          from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { getAlertLog, getDailyAlertCounts, getWeeklyUrgentCounts } from '../api/alertStats'
 
 const todayStr = () => new Date().toLocaleDateString('en-CA')
-const RANGE_DAYS = { '7j': 7, '15j': 15, 'Mois': 30 }
+
+const RANGE_DAYS        = { '7j': 7, '15j': 15, 'Mois': 30 }
+const WEEKLY_RANGE_DAYS = { '7j': 7, '15j': 15, 'Mois': 30 }
 
 export const ALERT_TYPES = ['security', 'temperature', 'humidity', 'battery', 'sound']
 
 export const TYPE_COLORS = {
   security   : '#2563EB',
   temperature: '#EF4444',
-  humidity   : '#60A5FA',
+  humidity   : '#3B82F6',
   battery    : '#D97706',
   sound      : '#16A34A',
 }
@@ -26,13 +28,20 @@ export const TYPE_LABELS = {
 }
 
 export function useAlertStats(apiculteurId) {
+  // ── Date range ─────────────────────────────────────────────────────────────
   const [range,       setRange]       = useState('7j')
   const [startDate,   setStartDate]   = useState('')
   const [endDate,     setEndDate]     = useState('')
   const [weeklyRange, setWeeklyRange] = useState('7j')
-  const [typeFilter,  setTypeFilter]  = useState('')
-  const [impFilter,   setImpFilter]   = useState('')
 
+  // ── Hive filter ────────────────────────────────────────────────────────────
+  const [selectedHiveId, setSelectedHiveId] = useState(null)
+
+  // ── Alert type / importance filters ───────────────────────────────────────
+  const [typeFilter, setTypeFilter] = useState('')
+  const [impFilter,  setImpFilter]  = useState('')
+
+  // ── Build shared API dates ─────────────────────────────────────────────────
   const { apiStart, apiEnd } = useMemo(() => {
     if (startDate || endDate) {
       return {
@@ -47,104 +56,141 @@ export function useAlertStats(apiculteurId) {
     return { apiStart: start.toISOString(), apiEnd: now.toISOString() }
   }, [range, startDate, endDate])
 
+  // ── Weekly range API dates ─────────────────────────────────────────────────
   const { weeklyApiStart, weeklyApiEnd, weekLabel } = useMemo(() => {
     const now   = new Date()
-    const days  = RANGE_DAYS[weeklyRange] ?? 7
+    const days  = WEEKLY_RANGE_DAYS[weeklyRange] ?? 7
     const start = new Date(now)
     start.setDate(start.getDate() - days)
     const fmt = (d) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
     return {
-      weeklyApiStart: start.toISOString(),
-      weeklyApiEnd  : now.toISOString(),
-      weekLabel     : `${fmt(start)} – ${fmt(now)}`,
+      weeklyApiStart : start.toISOString(),
+      weeklyApiEnd   : now.toISOString(),
+      weekLabel      : `${fmt(start)} – ${fmt(now)}`,
     }
   }, [weeklyRange])
 
-  // ── Fetch ALL alerts (no type filter) — used to compute breakdowns ─────────
-  const allAlertsQuery = useQuery({
-    queryKey : ['alert-log-all', apiStart, apiEnd, apiculteurId],
-    queryFn  : () => getAlertLog({ start: apiStart, end: apiEnd, apiculteur_id: apiculteurId, limit: 2000 }),
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-    enabled  : !!apiculteurId,
-  })
+  // ── Shared scope params passed to every query ──────────────────────────────
+  const scopeParams = {
+    apiculteur_id: apiculteurId   || undefined,
+    hive_id      : selectedHiveId || undefined,
+  }
 
-  // ── Filtered log — for the right-column list ───────────────────────────────
+
+  // ── Alert log ──────────────────────────────────────────────────────────────
+
+  const FIFTEEN_MIN = 15 * 60 * 1000
+  const FIVE_MIN    = 5 * 60 * 1000
+
+  // Alert log
   const logQuery = useQuery({
-    queryKey : ['alert-log', apiStart, apiEnd, typeFilter, impFilter, apiculteurId],
-    queryFn  : () => getAlertLog({
-      start: apiStart, end: apiEnd,
-      type: typeFilter || undefined, importance: impFilter || undefined,
-      apiculteur_id: apiculteurId,
+    queryKey       : ['alert-log', apiculteurId, selectedHiveId, apiStart, apiEnd, typeFilter, impFilter],
+    queryFn     : () => getAlertLog({
+      ...scopeParams,
+      start     : apiStart,
+      end       : apiEnd,
+      type      : typeFilter || undefined,
+      importance: impFilter  || undefined,
     }),
-    staleTime: 30_000, refetchInterval: 60_000, enabled: !!apiculteurId,
+    staleTime      : FIFTEEN_MIN,
+    refetchInterval: FIFTEEN_MIN,
   })
 
+  // Daily timeline — historical aggregation, no need to auto-refetch
   const dailyQuery = useQuery({
-    queryKey : ['alert-daily', apiStart, apiEnd, apiculteurId],
-    queryFn  : () => getDailyAlertCounts({ start: apiStart, end: apiEnd, apiculteur_id: apiculteurId }),
-    staleTime: 60_000, enabled: !!apiculteurId,
+    queryKey : ['alert-daily', apiculteurId, selectedHiveId, apiStart, apiEnd],
+    queryFn  : () => getDailyAlertCounts({ ...scopeParams, start: apiStart, end: apiEnd }),
+    staleTime: FIFTEEN_MIN,
+    // refetchInterval omitted — data doesn't change until the next uplink
   })
 
-  // ── Timeline data: total count + per-type breakdown ────────────────────────
-  const typeBreakdownByDate = useMemo(() => {
-    const map = {}
-    ;(allAlertsQuery.data ?? []).forEach(alert => {
+  // Weekly — slightly fresher since it covers an active window
+  const weeklyQuery = useQuery({
+    queryKey       : ['alert-weekly', apiculteurId, selectedHiveId, weeklyApiStart, weeklyApiEnd],
+    queryFn        : () => getWeeklyUrgentCounts(weeklyApiStart, weeklyApiEnd, apiculteurId, selectedHiveId),
+    staleTime      : FIFTEEN_MIN,
+    refetchInterval: FIFTEEN_MIN,
+  })
+
+  // ── Timeline data with per-type breakdown ──────────────────────────────────
+  const timelineData = useMemo(() => {
+    const raw       = dailyQuery.data ?? []
+    const logAlerts = logQuery.data   ?? []
+
+    const byDate = {}
+    logAlerts.forEach(alert => {
       const day = new Date(alert.ts).toLocaleDateString('en-CA')
-      if (!map[day]) map[day] = {}
-      map[day][alert.type] = (map[day][alert.type] ?? 0) + 1
+      if (!byDate[day]) byDate[day] = {}
+      byDate[day][alert.type] = (byDate[day][alert.type] ?? 0) + 1
     })
-    return map
-  }, [allAlertsQuery.data])
 
-  const timelineData = useMemo(() =>
-    (dailyQuery.data ?? []).map(d => {
-      const breakdown = typeBreakdownByDate[d.date] ?? {}
-      const total     = d.count
+    return raw.map(d => {
+      const breakdown   = byDate[d.date] ?? {}
+      const total       = d.count
+      const percentages = Object.fromEntries(
+        ALERT_TYPES.map(t => [
+          t,
+          total > 0 ? Math.round(((breakdown[t] ?? 0) / total) * 100) : 0,
+        ])
+      )
       return {
-        date       : d.date.slice(5).replace('-', '/'),
-        count      : total,
+        date: d.date.slice(5).replace('-', '/'),
+        count: d.count,
         breakdown,
-        // Percentages: "Humidité: 30%" shown in tooltip
-        percentages: Object.fromEntries(
-          ALERT_TYPES.map(t => [t, total > 0 ? Math.round(((breakdown[t] ?? 0) / total) * 100) : 0])
-        ),
+        percentages,
       }
-    }),
-    [dailyQuery.data, typeBreakdownByDate]
-  )
+    })
+  }, [dailyQuery.data, logQuery.data])
 
-  // ── Weekly stacked data: per-type counts per weekday ──────────────────────
-  const weeklyStackedData = useMemo(() => {
-    const DAY_LABELS = ['L', 'M', 'Mer', 'J', 'V', 'S', 'D']
-    const map = Object.fromEntries(DAY_LABELS.map((_, i) => [i, {}]))
+  // ── Weekly stacked bar data ────────────────────────────────────────────────
+  const weeklyData = useMemo(() => {
+    const base      = weeklyQuery.data ?? []
+    const logAlerts = logQuery.data    ?? []
 
-    const weeklyStart = new Date(weeklyApiStart)
-    ;(allAlertsQuery.data ?? []).forEach(alert => {
-      if (new Date(alert.ts) < weeklyStart) return
-      const wd = (new Date(alert.ts).getDay() + 6) % 7  // Mon=0
-      map[wd][alert.type] = (map[wd][alert.type] ?? 0) + 1
+    const byDay = {}
+    logAlerts.forEach(alert => {
+      if (alert.importance !== 'urgente') return
+      const dt  = new Date(alert.ts)
+      const day = ['D', 'L', 'M', 'Mer', 'J', 'V', 'S'][dt.getDay()]
+      if (!byDay[day]) byDay[day] = {}
+      byDay[day][alert.type] = (byDay[day][alert.type] ?? 0) + 1
     })
 
-    return DAY_LABELS.map((label, i) => ({
-      day: label,
-      ...Object.fromEntries(ALERT_TYPES.map(t => [t, map[i][t] ?? 0])),
+    return base.map(({ day, count }) => ({
+      day,
+      count,
+      ...Object.fromEntries(ALERT_TYPES.map(t => [t, byDay[day]?.[t] ?? 0])),
     }))
-  }, [allAlertsQuery.data, weeklyApiStart])
+  }, [weeklyQuery.data, logQuery.data])
 
   return {
-    range, setRange, startDate, setStartDate, endDate, setEndDate,
+    // Date range
+    range, setRange,
+    startDate, setStartDate,
+    endDate,   setEndDate,
+
+    // Hive filter
+    selectedHiveId, setSelectedHiveId,
+
+    // Timeline
     timelineData,
-    timelineLoading: dailyQuery.isLoading || allAlertsQuery.isLoading,
+    timelineLoading: dailyQuery.isLoading,
+
+    // Weekly
     weeklyRange, setWeeklyRange,
-    weeklyData: weeklyStackedData,
-    weeklyLoading: allAlertsQuery.isLoading,
+    weeklyData,
+    weeklyLoading: weeklyQuery.isLoading,
     weekLabel,
+
+    // Alert log
     alerts       : logQuery.data ?? [],
     alertsLoading: logQuery.isLoading,
     totalToday   : (logQuery.data ?? []).filter(a =>
       new Date(a.ts).toLocaleDateString('en-CA') === todayStr()
     ).length,
-    typeFilter, setTypeFilter, impFilter, setImpFilter,
+
+    // Filters
+    typeFilter, setTypeFilter,
+    impFilter,  setImpFilter,
   }
 }

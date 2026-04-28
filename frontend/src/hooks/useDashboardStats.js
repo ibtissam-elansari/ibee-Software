@@ -5,6 +5,7 @@ import { useHiveList }   from './useHives'
 
 const SOUND_THRESHOLD   = 70
 const BATTERY_THRESHOLD = 3.5
+const FIFTEEN_MIN       = 15 * 60 * 1000
 
 export function useDashboardStats() {
   const { apiculteurId } = useParams()
@@ -16,7 +17,6 @@ export function useDashboardStats() {
   } = useHiveList(apiculteurId)
 
   const latestQuery = useQuery({
-    // ← was 'hives-latest-all' — collided with useAllHivesWithLatest's key
     queryKey       : ['dashboard-latest', apiculteurId, hives.map(h => h.id)],
     queryFn        : async () => {
       if (!hives.length) return []
@@ -27,8 +27,8 @@ export function useDashboardStats() {
       }))
     },
     enabled        : hives.length > 0,
-    refetchInterval: 15_000,
-    staleTime      : 10_000,
+    staleTime      : FIFTEEN_MIN,
+    refetchInterval: FIFTEEN_MIN,
   })
 
   const latestByHive = latestQuery.data ?? []
@@ -40,9 +40,9 @@ export function useDashboardStats() {
   const alertHives = latestByHive.filter(({ data }) => {
     if (!data) return false
     return (
-      data.door_open === true                              ||
-      (data.sound_level   ?? 0)   > SOUND_THRESHOLD       ||
-      (data.temperature_c ?? 0)   > 38                    ||
+      data.door_open === true                            ||
+      (data.sound_level   ?? 0)   > SOUND_THRESHOLD     ||
+      (data.temperature_c ?? 0)   > 38                  ||
       (data.battery_v     ?? 999) < BATTERY_THRESHOLD
     )
   })
