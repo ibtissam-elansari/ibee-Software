@@ -1,16 +1,26 @@
 """
 Threshold resolution: per-hive DB row > global defaults.
-Import `get_thresholds` wherever alert logic runs.
+Import `get_thresholds` (async) or `get_thresholds_sync` (row already loaded)
+wherever alert logic runs.
 """
 from __future__ import annotations
 
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.models import HiveThreshold
+
+
+def _pick(value, default):
+    """Return `value` when it is explicitly set (not None), else `default`.
+
+    Using `value or default` is wrong: it would replace a legitimate 0.0
+    threshold with the global default because 0.0 is falsy in Python.
+    """
+    return value if value is not None else default
 
 
 @dataclass(frozen=True)
@@ -21,6 +31,7 @@ class Thresholds:
     hum_urgente    : float
     battery_v      : float
     sound_level    : int
+    weight_drop_kg : Optional[float] = None   # None = weight alerting disabled
 
 
 GLOBAL_DEFAULTS = Thresholds(
@@ -30,7 +41,21 @@ GLOBAL_DEFAULTS = Thresholds(
     hum_urgente    = 80.0,
     battery_v      = 3.5,
     sound_level    = 80,
+    weight_drop_kg = None,   # off by default — admin must opt in per hive
 )
+
+
+def _from_row(row: HiveThreshold) -> Thresholds:
+    """Build a Thresholds from a DB row, falling back field-by-field to globals."""
+    return Thresholds(
+        temp_attention = _pick(row.temp_attention, GLOBAL_DEFAULTS.temp_attention),
+        temp_urgente   = _pick(row.temp_urgente,   GLOBAL_DEFAULTS.temp_urgente),
+        hum_attention  = _pick(row.hum_attention,  GLOBAL_DEFAULTS.hum_attention),
+        hum_urgente    = _pick(row.hum_urgente,     GLOBAL_DEFAULTS.hum_urgente),
+        battery_v      = _pick(row.battery_v,       GLOBAL_DEFAULTS.battery_v),
+        sound_level    = _pick(row.sound_level,     GLOBAL_DEFAULTS.sound_level),
+        weight_drop_kg = _pick(row.weight_drop_kg,  GLOBAL_DEFAULTS.weight_drop_kg),
+    )
 
 
 async def get_thresholds(session: AsyncSession, hive_id: int) -> Thresholds:
@@ -39,17 +64,7 @@ async def get_thresholds(session: AsyncSession, hive_id: int) -> Thresholds:
         select(HiveThreshold).where(HiveThreshold.hive_id == hive_id)
     )).scalars().first()
 
-    if row is None:
-        return GLOBAL_DEFAULTS
-
-    return Thresholds(
-        temp_attention = row.temp_attention or GLOBAL_DEFAULTS.temp_attention,
-        temp_urgente   = row.temp_urgente   or GLOBAL_DEFAULTS.temp_urgente,
-        hum_attention  = row.hum_attention  or GLOBAL_DEFAULTS.hum_attention,
-        hum_urgente    = row.hum_urgente    or GLOBAL_DEFAULTS.hum_urgente,
-        battery_v      = row.battery_v      or GLOBAL_DEFAULTS.battery_v,
-        sound_level    = row.sound_level    or GLOBAL_DEFAULTS.sound_level,
-    )
+    return GLOBAL_DEFAULTS if row is None else _from_row(row)
 
 
 def get_thresholds_sync(row: Optional[HiveThreshold]) -> Thresholds:
@@ -57,13 +72,4 @@ def get_thresholds_sync(row: Optional[HiveThreshold]) -> Thresholds:
     Synchronous variant for contexts where the HiveThreshold row is
     already loaded (avoids an extra await in tight loops).
     """
-    if row is None:
-        return GLOBAL_DEFAULTS
-    return Thresholds(
-        temp_attention = row.temp_attention or GLOBAL_DEFAULTS.temp_attention,
-        temp_urgente   = row.temp_urgente   or GLOBAL_DEFAULTS.temp_urgente,
-        hum_attention  = row.hum_attention  or GLOBAL_DEFAULTS.hum_attention,
-        hum_urgente    = row.hum_urgente    or GLOBAL_DEFAULTS.hum_urgente,
-        battery_v      = row.battery_v      or GLOBAL_DEFAULTS.battery_v,
-        sound_level    = row.sound_level    or GLOBAL_DEFAULTS.sound_level,
-    )
+    return GLOBAL_DEFAULTS if row is None else _from_row(row)
