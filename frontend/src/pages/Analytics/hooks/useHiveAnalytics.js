@@ -1,3 +1,5 @@
+// frontend/src/pages/Analytics/hooks/useHiveAnalytics
+
 import { useMemo, useState } from 'react'
 import { useHiveLatest, useHiveStats } from '../../../hooks/useHives'
 import { useQuery } from '@tanstack/react-query'
