@@ -1,5 +1,3 @@
-# routes_webhooks.py:
-
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -20,6 +18,7 @@ router = APIRouter()
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
+
 async def _get_or_create_device(session: AsyncSession, dev_eui: str) -> Device:
     dev_eui = dev_eui.lower()
     result  = await session.execute(select(Device).where(Device.dev_eui == dev_eui))
@@ -32,6 +31,7 @@ async def _get_or_create_device(session: AsyncSession, dev_eui: str) -> Device:
     await session.refresh(device)
     return device
 
+
 @router.post("/chirpstack/uplink")
 async def chirpstack_uplink(
     payload : dict[str, Any],
@@ -42,10 +42,13 @@ async def chirpstack_uplink(
 
     Supports two payload shapes:
       1. Decoded object:  payload["object"]  (when JS codec is configured)
-      2. Raw base64:      payload["data"]    (when no codec — recommended)
+      2. Raw base64:      payload["data"]    (when no codec)
 
-    After persisting the measurement, updates the SSE cache so connected
-    dashboard clients receive the new data instantly.
+    Fields extracted from payload["object"]:
+      temperature_c, humidity_pct, sound_level, door_open,
+      weight_kg (NEW), gps_lat, gps_lng, battery_v
+
+    After persisting, updates the SSE cache for connected dashboard clients.
     """
     # ── Extract DevEUI ───────────────────────────────────────────────────────
     dev_eui = (
@@ -55,22 +58,16 @@ async def chirpstack_uplink(
     if not dev_eui:
         raise HTTPException(status_code=400, detail="missing devEui / deviceInfo.devEui")
 
-    # ── Update device status ─────────────────────────────────────────────────
-    device              = await _get_or_create_device(session, dev_eui)
-    
+    # ── Get or create device ─────────────────────────────────────────────────
+    device = await _get_or_create_device(session, dev_eui)
 
-    # ── AUTO CREATE + LINK HIVE IF MISSING ─────────────────────────────
+    # ── Auto-create placeholder hive if device is unlinked ───────────────────
     if device.hive_id is None:
-        # We cannot auto-create a hive without an apiculteur_id —
-        # that would violate the DB constraint and break access control.
-        # Instead, create an *unlinked* placeholder that a superuser
-        # must later assign to an apiculteur via the admin UI.
         hive = Hive(
-            name=f"Ruche-{device.dev_eui[-4:]}",
-            location_name="Auto-created — assign to an apiculteur",
-            apiculteur_id=None,   # intentionally unlinked
-            deleted_at=_utcnow(), # soft-deleted so it's hidden from normal queries
-                                # until a superuser assigns + restores it
+            name          = f"Ruche-{device.dev_eui[-4:]}",
+            location_name = "Auto-created — assign to an apiculteur",
+            apiculteur_id = None,
+            deleted_at    = _utcnow(),   # soft-deleted until a superuser assigns it
         )
         session.add(hive)
         await session.commit()
@@ -83,7 +80,7 @@ async def chirpstack_uplink(
 
         print(f"⚠️  Device {device.dev_eui} → unlinked placeholder hive {hive.id} (needs apiculteur assignment)")
 
-    
+    # ── Update device heartbeat ──────────────────────────────────────────────
     device.status       = "online"
     device.last_seen_at = _utcnow()
     session.add(device)
@@ -123,6 +120,7 @@ async def chirpstack_uplink(
                 "humidity_pct"  : p.humidity_pct,
                 "sound_level"   : p.sound_level,
                 "door_open"     : p.door_open,
+                "weight_kg"     : getattr(p, "weight_kg", None),   # NEW — graceful if codec omits it
                 "gps_lat"       : p.gps_lat,
                 "gps_lng"       : p.gps_lng,
                 "battery_v"     : p.battery_v,
@@ -130,23 +128,23 @@ async def chirpstack_uplink(
         except Exception as exc:
             raise HTTPException(status_code=422, detail=f"payload decode error: {exc}")
 
-    # ── Persist measurement ──────────────────────────────────────────────────
-
-    # ── Resolve apiculteur_id from hive ─────────────────────────────────────────
+    # ── Resolve apiculteur_id from hive ──────────────────────────────────────
     apiculteur_id: Optional[int] = None
     if device.hive_id is not None:
         hive = await session.get(Hive, device.hive_id)
         if hive:
             apiculteur_id = hive.apiculteur_id
-            
+
+    # ── Persist measurement ──────────────────────────────────────────────────
     m = Measurement(
         device_id     = device.id,
-        apiculteur_id = apiculteur_id,   # ← add this
+        apiculteur_id = apiculteur_id,
         ts            = ts_dt,
         temperature_c = decoded.get("temperature_c"),
         humidity_pct  = decoded.get("humidity_pct"),
         sound_level   = decoded.get("sound_level"),
         door_open     = decoded.get("door_open"),
+        weight_kg     = decoded.get("weight_kg"),     # NEW
         gps_lat       = decoded.get("gps_lat"),
         gps_lng       = decoded.get("gps_lng"),
         battery_v     = decoded.get("battery_v"),
@@ -158,7 +156,6 @@ async def chirpstack_uplink(
     await session.refresh(m)
 
     # ── Push to SSE stream ───────────────────────────────────────────────────
-    # Notify any connected dashboard clients instantly (no polling needed)
     if device.hive_id is not None:
         sse_payload = {
             "id"            : m.id,
@@ -168,6 +165,7 @@ async def chirpstack_uplink(
             "humidity_pct"  : m.humidity_pct,
             "sound_level"   : m.sound_level,
             "door_open"     : m.door_open,
+            "weight_kg"     : m.weight_kg,            # NEW
             "gps_lat"       : m.gps_lat,
             "gps_lng"       : m.gps_lng,
             "battery_v"     : m.battery_v,

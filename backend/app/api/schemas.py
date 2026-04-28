@@ -43,6 +43,10 @@ class HiveStatsOut(BaseModel):
     max_battery_v      : Optional[float] = None
     sound_events       : int
     door_open_events   : int
+    # Weight stats (NEW)
+    avg_weight_kg      : Optional[float] = None
+    min_weight_kg      : Optional[float] = None
+    max_weight_kg      : Optional[float] = None
     first_seen         : Optional[datetime] = None
     last_seen          : Optional[datetime] = None
 
@@ -57,6 +61,7 @@ class HiveThresholdOut(BaseModel):
     hum_urgente    : Optional[float]
     battery_v      : Optional[float]
     sound_level    : Optional[int]
+    weight_drop_kg : Optional[float] = None   # NEW
     updated_at     : datetime
 
     class Config:
@@ -64,12 +69,13 @@ class HiveThresholdOut(BaseModel):
 
 
 class HiveThresholdUpdate(BaseModel):
-    temp_attention : Optional[float] = Field(default=None, ge=0, le=60)
-    temp_urgente   : Optional[float] = Field(default=None, ge=0, le=60)
-    hum_attention  : Optional[float] = Field(default=None, ge=0, le=100)
-    hum_urgente    : Optional[float] = Field(default=None, ge=0, le=100)
-    battery_v      : Optional[float] = Field(default=None, ge=0, le=5)
-    sound_level    : Optional[int]   = Field(default=None, ge=0, le=120)
+    temp_attention : Optional[float] = Field(default=None, ge=0,   le=60)
+    temp_urgente   : Optional[float] = Field(default=None, ge=0,   le=60)
+    hum_attention  : Optional[float] = Field(default=None, ge=0,   le=100)
+    hum_urgente    : Optional[float] = Field(default=None, ge=0,   le=100)
+    battery_v      : Optional[float] = Field(default=None, ge=0,   le=5)
+    sound_level    : Optional[int]   = Field(default=None, ge=0,   le=120)
+    weight_drop_kg : Optional[float] = Field(default=None, ge=0.1, le=30)   # NEW
 
 
 # ── Device ────────────────────────────────────────────────────────────────────
@@ -101,6 +107,7 @@ class MeasurementOut(BaseModel):
     humidity_pct   : Optional[float] = None
     sound_level    : Optional[int]   = None
     door_open      : Optional[bool]  = None
+    weight_kg      : Optional[float] = None   # NEW
     gps_lat        : Optional[float] = None
     gps_lng        : Optional[float] = None
     battery_v      : Optional[float] = None
@@ -117,6 +124,7 @@ class HistoryPointOut(BaseModel):
     humidity_pct  : Optional[float] = None
     sound_level   : Optional[int]   = None
     door_open     : Optional[bool]  = None
+    weight_kg     : Optional[float] = None   # NEW
     gps_lat       : Optional[float] = None
     gps_lng       : Optional[float] = None
     battery_v     : Optional[float] = None
