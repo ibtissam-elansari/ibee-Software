@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import CheckConstraint, event, Index
+from sqlalchemy import CheckConstraint, Index
 from sqlalchemy.orm import validates
 from sqlmodel import Field, SQLModel
 from enum import Enum
@@ -53,7 +53,6 @@ class User(SQLModel, table=True):
     created_at      : datetime       = Field(default_factory=_utcnow, index=True)
 
     __table_args__ = (
-        # superuser has no apiculteur; admin and user always belong to one
         CheckConstraint(
             "(role = 'superuser' AND apiculteur_id IS NULL) OR "
             "(role != 'superuser' AND apiculteur_id IS NOT NULL)",
@@ -63,22 +62,17 @@ class User(SQLModel, table=True):
 
     @validates("role", "apiculteur_id")
     def validate_role_apiculteur(self, key, value):
-        """
-        Python-layer guard (fires before flush, gives a readable error
-        instead of a cryptic IntegrityError from Postgres).
-        """
-        role = value if key == "role" else getattr(self, "role", None)
+        role          = value if key == "role"          else getattr(self, "role", None)
         apiculteur_id = value if key == "apiculteur_id" else getattr(self, "apiculteur_id", None)
 
         if role is None:
-            return value  # not yet set, skip
+            return value
 
         role_val = role.value if isinstance(role, UserRole) else role
 
         if role_val == "superuser" and apiculteur_id is not None:
             raise ValueError("Un superuser ne peut pas appartenir à un apiculteur")
         if role_val != "superuser" and apiculteur_id is None:
-            # Only raise when both are fully known (not during partial construction)
             if key == "apiculteur_id":
                 raise ValueError("Un admin/user doit appartenir à un apiculteur")
 
@@ -88,8 +82,7 @@ class User(SQLModel, table=True):
 class Hive(SQLModel, table=True):
     """
     Every active hive must belong to an apiculteur.
-    Soft-deleted hives (deleted_at IS NOT NULL) are excluded from
-    normal queries via the active_hives partial index.
+    Soft-deleted hives (deleted_at IS NOT NULL) are excluded from normal queries.
     """
     __tablename__ = "hive"
 
@@ -110,8 +103,6 @@ class Hive(SQLModel, table=True):
             "deleted_at IS NOT NULL OR apiculteur_id IS NOT NULL",
             name="ck_hive_active_needs_apiculteur",
         ),
-        # Partial index: only live hives are indexed — keeps the index small
-        # and makes "list active hives for apiculteur X" fast.
         Index(
             "ix_hive_apiculteur_active",
             "apiculteur_id",
@@ -121,7 +112,7 @@ class Hive(SQLModel, table=True):
 
     @validates("apiculteur_id", "deleted_at")
     def validate_active_hive_has_apiculteur(self, key, value):
-        deleted_at = value if key == "deleted_at" else getattr(self, "deleted_at", None)
+        deleted_at    = value if key == "deleted_at"    else getattr(self, "deleted_at", None)
         apiculteur_id = value if key == "apiculteur_id" else getattr(self, "apiculteur_id", None)
 
         if deleted_at is None and apiculteur_id is None and key == "apiculteur_id":
@@ -143,9 +134,11 @@ class Device(SQLModel, table=True):
 
 class Measurement(SQLModel, table=True):
     """
-    apiculteur_id is denormalized here (device → hive → apiculteur) so that
-    access-control queries never need a join. It is set by the webhook handler
-    when the measurement is persisted and must never be NULL after insert.
+    One row per sensor reading.  apiculteur_id is denormalized so access-control
+    queries never need a join.
+
+    weight_kg — optional load-cell reading in kilograms.  NULL when the hardware
+    does not include a scale (older hive versions).
     """
     __tablename__ = "measurement"
 
@@ -162,6 +155,7 @@ class Measurement(SQLModel, table=True):
     humidity_pct  : Optional[float] = None
     sound_level   : Optional[int]   = None
     door_open     : Optional[bool]  = None
+    weight_kg     : Optional[float] = None   # ← hive scale reading (NEW)
 
     gps_lat   : Optional[float] = None
     gps_lng   : Optional[float] = None
@@ -175,18 +169,21 @@ class Measurement(SQLModel, table=True):
         # "give me all measurements for apiculteur X in time range T"
         Index("ix_measurement_apiculteur_ts", "apiculteur_id", "ts"),
     )
-    
+
 
 class HiveThreshold(SQLModel, table=True):
     """
-    Per-hive alert thresholds set by an admin or superuser.
+    Per-hive alert thresholds set by admin or superuser.
     Falls back to global defaults when absent.
-    Only one active row per hive — upsert on hive_id.
+    Only one row per hive — upsert on hive_id.
+
+    weight_drop_kg: alert when the hive loses more than this many kg
+    within a rolling 24-hour window. NULL = weight alerting disabled.
     """
     __tablename__ = "hive_threshold"
 
-    id            : Optional[int]   = Field(default=None, primary_key=True)
-    hive_id       : int             = Field(foreign_key="hive.id", unique=True, index=True)
+    id             : Optional[int]   = Field(default=None, primary_key=True)
+    hive_id        : int             = Field(foreign_key="hive.id", unique=True, index=True)
     # Temperature
     temp_attention : Optional[float] = Field(default=35.0)
     temp_urgente   : Optional[float] = Field(default=40.0)
@@ -197,6 +194,8 @@ class HiveThreshold(SQLModel, table=True):
     battery_v      : Optional[float] = Field(default=3.5)
     # Sound (alert when ABOVE this value)
     sound_level    : Optional[int]   = Field(default=80)
+    # Weight drop alert (alert when daily loss EXCEEDS this value in kg) (NEW)
+    weight_drop_kg : Optional[float] = Field(default=None)
     # Metadata
     updated_at     : datetime        = Field(default_factory=_utcnow)
     updated_by_id  : Optional[int]   = Field(default=None, foreign_key="user.id")
