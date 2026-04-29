@@ -434,3 +434,35 @@ async def device_history(
         q.order_by(Measurement.ts.desc()).limit(limit)
     )).scalars().all()
     return list(reversed(rows))
+
+
+@router.get("/hives/{hive_id}/thresholds/effective", response_model=HiveThresholdOut)
+async def get_effective_thresholds(
+    hive_id : int,
+    session : AsyncSession = Depends(get_session),
+    current : dict         = Depends(get_current_user),   # any authenticated user
+):
+    """
+    Returns the effective thresholds for a hive — custom row if it exists,
+    global defaults otherwise. Used by frontend alert coloring and counts.
+    """
+    hive = await _get_hive_or_404(hive_id, session)
+    require_hive_access(current, hive)
+
+    row = (await session.execute(
+        select(HiveThreshold).where(HiveThreshold.hive_id == hive_id)
+    )).scalars().first()
+
+    if row is None:
+        return HiveThresholdOut(
+            hive_id        = hive_id,
+            temp_attention = GLOBAL_DEFAULTS.temp_attention,
+            temp_urgente   = GLOBAL_DEFAULTS.temp_urgente,
+            hum_attention  = GLOBAL_DEFAULTS.hum_attention,
+            hum_urgente    = GLOBAL_DEFAULTS.hum_urgente,
+            battery_v      = GLOBAL_DEFAULTS.battery_v,
+            sound_level    = GLOBAL_DEFAULTS.sound_level,
+            weight_drop_kg = GLOBAL_DEFAULTS.weight_drop_kg,
+            updated_at     = hive.created_at,
+        )
+    return row
