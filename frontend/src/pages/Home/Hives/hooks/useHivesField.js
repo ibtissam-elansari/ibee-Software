@@ -1,8 +1,10 @@
+// /frontend/src/pages/Home/Hives/hooks/useHivesField.js
 import { useState, useMemo } from 'react'
 import { useQuery }          from '@tanstack/react-query'
 import { useParams }         from 'react-router-dom'
 import { useHiveList, useHiveLatest } from '../../../../hooks/useHives'
 import { getHiveLatest }     from '../../../../api/hives'
+import { measurementAlertStatus, DEFAULT_THRESHOLDS } from '../../../../hooks/useHiveThresholds'
 
 const PAGE_SIZE = 8
 
@@ -33,19 +35,9 @@ function useAllHivesWithLatest(apiculteurId) {
 }
 
 function getHiveStatus(latest) {
-  if (!latest) return 'Normale'
-  if (
-    latest.door_open ||
-    (latest.temperature_c ?? 0) > 42 ||
-    (latest.humidity_pct  ?? 0) > 85 ||
-    (latest.battery_v     ?? 9) < 3.2
-  ) return 'Urgente'
-  if (
-    (latest.temperature_c ?? 0) > 38 ||
-    (latest.humidity_pct  ?? 0) > 75 ||
-    (latest.sound_level   ?? 0) > 70
-  ) return 'Attention'
-  return 'Normale'
+  const status = measurementAlertStatus(latest, DEFAULT_THRESHOLDS)
+  // Map internal status names to the display labels already used by the filter UI
+  return status === 'urgente' ? 'Urgente' : status === 'attention' ? 'Attention' : 'Normale'
 }
 
 export function useHivesField() {
