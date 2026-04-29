@@ -7,7 +7,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { Search, PlusCircle, Pencil, Trash2, UserCircle2, ChevronRight } from 'lucide-react';
-import { HoneycombBottomRight } from '../Analytics/components/HoneycombDecor';
 import { useUserList, useCreateUser, useUpdateUser, useDeleteUser } from '../../hooks/useUsers';
 import { useApiculteurList } from '../../hooks/useApiculteurs';
 import UserFormModal   from '../Settings/components/UserFormModal';
@@ -89,7 +88,6 @@ const RoleManagementPage = () => {
 
   return (
     <div className="relative min-h-full overflow-hidden" style={{ background: '#FDFAF4' }}>
-      <HoneycombBottomRight />
 
       <div className="relative z-10 p-8">
 
