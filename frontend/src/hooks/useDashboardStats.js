@@ -1,7 +1,9 @@
+// /frontend/src/hooks/useDashboardStats.js
 import { useQuery }  from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { getHiveLatest } from '../api/hives'
 import { useHiveList }   from './useHives'
+import { measurementAlertStatus, DEFAULT_THRESHOLDS } from './useHiveThresholds'
 
 const SOUND_THRESHOLD   = 70
 const BATTERY_THRESHOLD = 3.5
@@ -39,12 +41,7 @@ export function useDashboardStats() {
 
   const alertHives = latestByHive.filter(({ data }) => {
     if (!data) return false
-    return (
-      data.door_open === true                            ||
-      (data.sound_level   ?? 0)   > SOUND_THRESHOLD     ||
-      (data.temperature_c ?? 0)   > 38                  ||
-      (data.battery_v     ?? 999) < BATTERY_THRESHOLD
-    )
+    return measurementAlertStatus(data, DEFAULT_THRESHOLDS) !== 'normal'
   })
 
   return {
