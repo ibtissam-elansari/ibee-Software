@@ -18,6 +18,8 @@ import ApiculteursPage      from '../pages/Apiculteurs/ApiculteursPage';
 import ProfilePage          from '../pages/Settings/ProfilePage';
 import AccountManagementPage from '../pages/Settings/AccountManagementPage';
 import RoleManagementPage   from '../pages/RoleManagement/RoleManagementPage';
+import SupportPage          from '../pages/Support/SupportPage';
+import SupportDashboardPage from '../pages/Support/SupportDashboardPage';
 
 const RootRedirect = () => {
   const user = useAuthStore((s) => s.user);
@@ -41,7 +43,7 @@ export const router = createBrowserRouter([
         { path: '/parametres/roles',   element: <RoleManagementPage /> },
         { path: '/parametres/profile', element: <ProfilePage /> },
         { path: '/parametres',         element: <Navigate to="/parametres/profile" replace /> },
-        { path: '/support',            element: <div className="p-8">Support (à venir)</div> },
+        { path: '/support',            element: <SupportDashboardPage /> },
       ],
     }],
   },
@@ -62,6 +64,7 @@ export const router = createBrowserRouter([
         { path: 'parametres/profile',                  element: <ProfilePage /> },
         { path: 'parametres/compte',                   element: <AccountManagementPage /> },
         { path: 'parametres',                          element: <Navigate to="parametres/profile" replace /> },
+        { path: 'support',                             element: <SupportPage /> },
       ],
     }],
   },
