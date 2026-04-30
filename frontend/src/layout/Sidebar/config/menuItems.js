@@ -10,6 +10,7 @@ import {
   UserCircle,
   ChevronLeft,
   MessageSquare,
+  HeadphonesIcon
 } from 'lucide-react';
 
 export function getMenuItems(role, scopedApiculteur) {
@@ -20,9 +21,9 @@ export function getMenuItems(role, scopedApiculteur) {
     return [
       { key: 'apiculteurs', label: 'Apiculteurs',       path: '/apiculteurs',      icon: Building2,    end: true  },
       { key: 'roles',       label: 'Gestion des rôles', path: '/parametres/roles', icon: Users,        end: true  },
-      { key: 'support',     label: 'Demande support',   path: '/support',           icon: MessageSquare, end: true },
       // end: true → only active when path is EXACTLY /parametres/profile, not /parametres/roles
-      { key: 'profile',  label: 'Profile',        path: '/parametres/profile', icon: Settings,   end: true  },
+      { key: 'profile',  label: 'Profile',        path: '/parametres/profile', icon: Settings,          end: true  },
+      { key: 'support',  label : 'Support',       path  : '/support',          icon  : HeadphonesIcon,  end: true },
     ];
   }
 
@@ -42,9 +43,10 @@ export function getMenuItems(role, scopedApiculteur) {
   }
 
   items.push(
-    { key: 'dashboard', label: 'Dashboard',          path: `${base}/dashboard`,           icon: LayoutDashboard, end: true },
-    { key: 'gestion',   label: 'Gestion des ruches', path: `${base}/gestion`,             icon: Wrench,          end: false },
-    { key: 'alerts',    label: 'Alertes',             path: `${base}/statistique-alertes`, icon: BellRing,        end: true  },
+    { key: 'dashboard', label: 'Dashboard',          path: `${base}/dashboard`,           icon: LayoutDashboard,  end: true },
+    { key: 'gestion',   label: 'Gestion des ruches', path: `${base}/gestion`,             icon: Wrench,           end: false },
+    { key: 'alerts',    label: 'Alertes',            path: `${base}/statistique-alertes`, icon: BellRing,         end: true  },
+    { key: 'support',   label : 'Support',           path: `${base}/support`,             icon: HeadphonesIcon,   end: true }
   );
 
   if (role === 'admin') {
