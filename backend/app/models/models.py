@@ -3,10 +3,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import CheckConstraint, Index
-from sqlalchemy.orm import validates
+from sqlalchemy.orm import validates, relationship
 from sqlmodel import Field, SQLModel
 from enum import Enum
+from sqlalchemy import (
+    BigInteger, Boolean, Column, DateTime, Enum as SAEnum,
+    ForeignKey, Integer, String, Text, CheckConstraint, Index
+)
 
 
 def _utcnow() -> datetime:
@@ -199,3 +202,57 @@ class HiveThreshold(SQLModel, table=True):
     # Metadata
     updated_at     : datetime        = Field(default_factory=_utcnow)
     updated_by_id  : Optional[int]   = Field(default=None, foreign_key="user.id")
+
+    # ------ support --------
+
+class TicketType(str, Enum):
+    bug         = "bug"
+    assistance  = "assistance"
+    amelioration = "amelioration"
+    urgence     = "urgence"
+ 
+ 
+class TicketStatus(str, Enum):
+    ouvert     = "ouvert"
+    en_cours   = "en_cours"
+    resolu     = "resolu"
+    ferme      = "ferme"
+ 
+ 
+class TicketPriority(str, Enum):
+    basse   = "basse"
+    normale = "normale"
+    haute   = "haute"
+    urgente = "urgente"
+ 
+ 
+class SupportTicket(Base):  # noqa: F821 — Base is defined in models.py
+    __tablename__ = "support_tickets"
+ 
+    id             = Column(Integer, primary_key=True, index=True)
+    title          = Column(String(200), nullable=False)
+    description    = Column(Text, nullable=False)
+    type           = Column(SAEnum(TicketType),     nullable=False, default=TicketType.assistance)
+    status         = Column(SAEnum(TicketStatus),   nullable=False, default=TicketStatus.ouvert)
+    priority       = Column(SAEnum(TicketPriority), nullable=False, default=TicketPriority.normale)
+ 
+    # Who created it
+    created_by_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
+    apiculteur_id      = Column(Integer, ForeignKey("apiculteurs.id"), nullable=True)
+ 
+    # Superuser who handles it
+    assigned_to_id     = Column(Integer, ForeignKey("users.id"), nullable=True)
+ 
+    # Superuser response
+    response           = Column(Text, nullable=True)
+    responded_at       = Column(DateTime(timezone=True), nullable=True)
+ 
+    created_at         = Column(DateTime(timezone=True), server_default="now()", nullable=False)
+    updated_at         = Column(DateTime(timezone=True), server_default="now()", onupdate="now()", nullable=False)
+    closed_at          = Column(DateTime(timezone=True), nullable=True)
+ 
+    # Relationships
+    created_by         = relationship("User", foreign_keys=[created_by_id])
+    assigned_to        = relationship("User", foreign_keys=[assigned_to_id])
+    apiculteur         = relationship("Apiculteur", foreign_keys=[apiculteur_id])
+ 
