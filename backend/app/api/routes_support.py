@@ -17,7 +17,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.api.schemas import (
     SupportTicketCreate,
@@ -28,7 +27,7 @@ from app.api.schemas import (
 )
 from app.core.dependencies import get_current_user, require_min_role
 from app.db.engine import get_session
-from app.models.models import SupportTicket, TicketStatus
+from app.models.models import SupportTicket, TicketStatus, User
 
 router = APIRouter(prefix="/support", tags=["support"])
 
@@ -37,24 +36,31 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _ticket_query_with_relations():
-    return (
-        select(SupportTicket)
-        .options(
-            selectinload(SupportTicket.created_by),
-            selectinload(SupportTicket.assigned_to),
-        )
-    )
-
-
 async def _get_ticket_or_404(ticket_id: int, session: AsyncSession) -> SupportTicket:
     row = (await session.execute(
-        _ticket_query_with_relations()
-        .where(SupportTicket.id == ticket_id)
+        select(SupportTicket).where(SupportTicket.id == ticket_id)
     )).scalars().first()
     if not row:
         raise HTTPException(status_code=404, detail="Ticket introuvable")
     return row
+
+
+async def _enrich(ticket: SupportTicket, session: AsyncSession) -> dict:
+    """Manually fetch related users and return a dict for SupportTicketOut."""
+    async def get_user(uid):
+        if uid is None:
+            return None
+        u = (await session.execute(
+            select(User).where(User.id == uid)
+        )).scalars().first()
+        if not u:
+            return None
+        return {"id": u.id, "email": u.email, "nom": None, "prenom": None}
+
+    data = ticket.model_dump()
+    data["created_by"]  = await get_user(ticket.created_by_id)
+    data["assigned_to"] = await get_user(ticket.assigned_to_id)
+    return data
 
 
 # ── CREATE ────────────────────────────────────────────────────────────────────
@@ -74,8 +80,7 @@ async def create_ticket(
     session.add(ticket)
     await session.commit()
     await session.refresh(ticket)
-    # reload with relations
-    return await _get_ticket_or_404(ticket.id, session)
+    return SupportTicketOut(**await _enrich(ticket, session))
 
 
 # ── LIST ──────────────────────────────────────────────────────────────────────
@@ -91,13 +96,11 @@ async def list_tickets(
     session       : AsyncSession           = Depends(get_session),
     current       : dict                   = Depends(get_current_user),
 ):
-    q = _ticket_query_with_relations()
+    q = select(SupportTicket)
 
     if current["role"] != "superuser":
-        # Regular users only see their own tickets
         q = q.where(SupportTicket.created_by_id == current["user_id"])
     else:
-        # Superuser can filter by cooperative
         if apiculteur_id is not None:
             q = q.where(SupportTicket.apiculteur_id == apiculteur_id)
 
@@ -110,7 +113,7 @@ async def list_tickets(
 
     q = q.order_by(SupportTicket.created_at.desc()).offset(skip).limit(limit)
     rows = (await session.execute(q)).scalars().all()
-    return rows
+    return [SupportTicketOut(**await _enrich(t, session)) for t in rows]
 
 
 # ── GET ONE ───────────────────────────────────────────────────────────────────
@@ -124,7 +127,7 @@ async def get_ticket(
     ticket = await _get_ticket_or_404(ticket_id, session)
     if current["role"] != "superuser" and ticket.created_by_id != current["user_id"]:
         raise HTTPException(status_code=403, detail="Accès refusé")
-    return ticket
+    return SupportTicketOut(**await _enrich(ticket, session))
 
 
 # ── UPDATE (owner, while open) ────────────────────────────────────────────────
@@ -153,7 +156,8 @@ async def update_ticket(
     ticket.updated_at = _utcnow()
     session.add(ticket)
     await session.commit()
-    return await _get_ticket_or_404(ticket_id, session)
+    await session.refresh(ticket)
+    return SupportTicketOut(**await _enrich(ticket, session))
 
 
 # ── RESPOND (superuser only) ──────────────────────────────────────────────────
@@ -181,7 +185,8 @@ async def respond_to_ticket(
 
     session.add(ticket)
     await session.commit()
-    return await _get_ticket_or_404(ticket_id, session)
+    await session.refresh(ticket)
+    return SupportTicketOut(**await _enrich(ticket, session))
 
 
 # ── PATCH STATUS (superuser only) ─────────────────────────────────────────────
@@ -205,7 +210,8 @@ async def patch_ticket_status(
 
     session.add(ticket)
     await session.commit()
-    return await _get_ticket_or_404(ticket_id, session)
+    await session.refresh(ticket)
+    return SupportTicketOut(**await _enrich(ticket, session))
 
 
 # ── DELETE (superuser only) ───────────────────────────────────────────────────

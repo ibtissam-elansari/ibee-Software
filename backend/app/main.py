@@ -13,7 +13,8 @@ from app.db.engine                import create_db_and_tables
 from app.api.routes_auth          import router as auth_router
 from app.api.routes_notifications import router as notifications_router
 from app.api.routes_alert_stats   import router as alert_stats_router
-from app.api.routes_apiculteurs   import router as apiculteurs_router  # ← add
+from app.api.routes_apiculteurs   import router as apiculteurs_router  
+from app.api.routes_support import router as support_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -45,7 +46,8 @@ app.include_router(hives_router,         prefix="/api",      tags=["api"])
 app.include_router(auth_router,          prefix="/auth",     tags=["auth"])
 app.include_router(notifications_router, prefix="/api",      tags=["notifications"])
 app.include_router(alert_stats_router,   prefix="/api",      tags=["alert-stats"])
-app.include_router(apiculteurs_router,   prefix="/api",      tags=["apiculteurs"])  # ← add
+app.include_router(apiculteurs_router,   prefix="/api",      tags=["apiculteurs"])
+app.include_router(support_router,       prefix="/api",      tags=["support"])
 
 @app.get("/", tags=["root"])
 async def root() -> dict:
