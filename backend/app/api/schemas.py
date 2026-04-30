@@ -5,6 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.models.models import TicketType, TicketStatus, TicketPriority
 
 # ── Hive ─────────────────────────────────────────────────────────────────────
 
@@ -134,3 +135,64 @@ class HistoryPointOut(BaseModel):
 
 # Backwards compat alias
 LatestMeasurementOut = MeasurementOut
+
+# ── Support ──────────────────────────────────────────────────────────────
+
+class SupportTicketCreate(BaseModel):
+    title       : str         = Field(..., min_length=5, max_length=200)
+    description : str         = Field(..., min_length=10)
+    type        : TicketType  = TicketType.assistance
+    priority    : TicketPriority = TicketPriority.normale
+ 
+ 
+class SupportTicketUpdate(BaseModel):
+    """Admin/user can update title, description while ticket is still open."""
+    title       : Optional[str] = Field(None, min_length=5, max_length=200)
+    description : Optional[str] = Field(None, min_length=10)
+ 
+ 
+class SupportTicketRespond(BaseModel):
+    """Superuser only — respond + change status."""
+    response    : str           = Field(..., min_length=1)
+    status      : TicketStatus  = TicketStatus.en_cours
+    priority    : Optional[TicketPriority] = None
+ 
+ 
+class SupportTicketStatusPatch(BaseModel):
+    """Superuser only — change status without a response."""
+    status      : TicketStatus
+ 
+ 
+class TicketUserOut(BaseModel):
+    id       : int
+    email    : str
+    nom      : Optional[str] = None
+    prenom   : Optional[str] = None
+ 
+    class Config:
+        from_attributes = True
+ 
+ 
+class SupportTicketOut(BaseModel):
+    id             : int
+    title          : str
+    description    : str
+    type           : TicketType
+    status         : TicketStatus
+    priority       : TicketPriority
+    created_by_id  : int
+    apiculteur_id  : Optional[int]
+    assigned_to_id : Optional[int]
+    response       : Optional[str]
+    responded_at   : Optional[datetime]
+    created_at     : datetime
+    updated_at     : datetime
+    closed_at      : Optional[datetime]
+ 
+    # Nested
+    created_by     : Optional[TicketUserOut] = None
+    assigned_to    : Optional[TicketUserOut] = None
+ 
+    class Config:
+        from_attributes = True
+ 
