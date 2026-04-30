@@ -4,6 +4,7 @@ import { useHivesField } from './hooks/useHivesField';
 import HiveRow from './components/HiveRow';
 import HiveModal from './components/HiveModal'
 import HiveGrid from './components/HiveGrid';
+import { useNavigate, useParams } from 'react-router';
 
 const COLUMNS = [
   { key: 'name',        label: 'Ruche ID'    },
@@ -37,6 +38,10 @@ const PaginationBtn = ({ onClick, disabled, active, children }) => (
 );
 
 const HivesField = () => {
+
+  const navigate = useNavigate();
+  const { apiculteurId } = useParams();
+
   const {
     paginated,      
     filtered,      
@@ -171,13 +176,13 @@ const HivesField = () => {
                 </tr>
               ) : (
                 paginated.map(hive => (
-                  <HiveRow key={hive.id} hive={hive} latest={hive._latest} onClick={openHiveModal} />
+                  <HiveRow key={hive.id} hive={hive} latest={hive._latest} onClick={() => navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`)} />
                 ))
               )}
             </tbody>
           </table>
         </div> ) : (
-          <HiveGrid hives={paginated} onHiveClick={openHiveModal} />
+          <HiveGrid hives={paginated} onHiveClick={(hive) => navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`)} />
         )}
         
         {totalPages > 1 && (

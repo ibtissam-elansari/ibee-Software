@@ -8,7 +8,7 @@ from typing import AsyncGenerator, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import func, select
+from sqlalchemy import func, select, Integer
 
 from app.api.schemas import (
     DeviceCreate, DeviceOut,
@@ -288,7 +288,7 @@ async def hive_stats(
             func.min(Measurement.battery_v)          .label("min_batt"),
             func.max(Measurement.battery_v)          .label("max_batt"),
             func.sum(Measurement.sound_level)        .label("sound_sum"),
-            func.sum(Measurement.door_open.cast(int)).label("door_sum"),
+            func.sum(Measurement.door_open.cast(Integer)).label("door_sum"),
             # Weight aggregates (NEW)
             func.avg(Measurement.weight_kg)          .label("avg_weight"),
             func.min(Measurement.weight_kg)          .label("min_weight"),
