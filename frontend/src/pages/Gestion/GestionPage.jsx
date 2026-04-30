@@ -67,7 +67,7 @@ const GestionPage = () => {
       {/* Hive Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
-        { user?.role === 'superadmin' ? (<AddHiveCard onClick={openCreate} />) : ''}
+        { user?.role === 'superuser' ? (<AddHiveCard onClick={openCreate} />) : ''}
 
         {isLoading
           ? Array.from({ length: 7 }).map((_, i) => (
