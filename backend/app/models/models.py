@@ -226,33 +226,23 @@ class TicketPriority(str, Enum):
     urgente = "urgente"
  
  
-class SupportTicket(Base):  # noqa: F821 — Base is defined in models.py
-    __tablename__ = "support_tickets"
- 
-    id             = Column(Integer, primary_key=True, index=True)
-    title          = Column(String(200), nullable=False)
-    description    = Column(Text, nullable=False)
-    type           = Column(SAEnum(TicketType),     nullable=False, default=TicketType.assistance)
-    status         = Column(SAEnum(TicketStatus),   nullable=False, default=TicketStatus.ouvert)
-    priority       = Column(SAEnum(TicketPriority), nullable=False, default=TicketPriority.normale)
- 
-    # Who created it
-    created_by_id      = Column(Integer, ForeignKey("users.id"), nullable=False)
-    apiculteur_id      = Column(Integer, ForeignKey("apiculteurs.id"), nullable=True)
- 
-    # Superuser who handles it
-    assigned_to_id     = Column(Integer, ForeignKey("users.id"), nullable=True)
- 
-    # Superuser response
-    response           = Column(Text, nullable=True)
-    responded_at       = Column(DateTime(timezone=True), nullable=True)
- 
-    created_at         = Column(DateTime(timezone=True), server_default="now()", nullable=False)
-    updated_at         = Column(DateTime(timezone=True), server_default="now()", onupdate="now()", nullable=False)
-    closed_at          = Column(DateTime(timezone=True), nullable=True)
- 
-    # Relationships
-    created_by         = relationship("User", foreign_keys=[created_by_id])
-    assigned_to        = relationship("User", foreign_keys=[assigned_to_id])
-    apiculteur         = relationship("Apiculteur", foreign_keys=[apiculteur_id])
- 
+class SupportTicket(SQLModel, table=True):
+    __tablename__ = "support_ticket"
+
+    id             : Optional[int]      = Field(default=None, primary_key=True)
+    title          : str                = Field(max_length=200)
+    description    : str
+    type           : TicketType         = Field(default=TicketType.assistance)
+    status         : TicketStatus       = Field(default=TicketStatus.ouvert)
+    priority       : TicketPriority     = Field(default=TicketPriority.normale)
+
+    created_by_id  : int                = Field(foreign_key="user.id")
+    apiculteur_id  : Optional[int]      = Field(default=None, foreign_key="apiculteur.id", index=True)
+    assigned_to_id : Optional[int]      = Field(default=None, foreign_key="user.id")
+
+    response       : Optional[str]      = Field(default=None)
+    responded_at   : Optional[datetime] = Field(default=None)
+
+    created_at     : datetime           = Field(default_factory=_utcnow, index=True)
+    updated_at     : datetime           = Field(default_factory=_utcnow)
+    closed_at      : Optional[datetime] = Field(default=None)
