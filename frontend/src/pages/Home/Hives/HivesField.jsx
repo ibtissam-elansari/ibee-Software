@@ -99,8 +99,8 @@ const HivesField = () => {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
               {[
-                { id: 'list', Icon: List },
                 { id: 'grid', Icon: LayoutGrid },
+                { id: 'list', Icon: List },
               ].map(({ id, Icon }) => (
                 <button
                   key={id}
@@ -206,7 +206,7 @@ const HivesField = () => {
         )}
 
         {/* Status bar */}
-        <div className="flex items-center gap-2 text-xs text-gray-400 fixed bottom-8">
+        <div className="flex items-center gap-2 text-base text-gray-400 fixed bottom-8">
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
           <span>
             Surveillance en direct

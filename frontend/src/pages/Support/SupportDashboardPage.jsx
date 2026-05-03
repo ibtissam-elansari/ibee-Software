@@ -333,7 +333,7 @@ const SupportDashboardPage = () => {
 
   return (
     <>
-      <div className="flex flex-col gap-5 p-2 px-5">
+      <div className="flex flex-col gap-5 p-6 ">
 
         {/* Header */}
         <div>

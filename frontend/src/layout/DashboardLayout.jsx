@@ -31,7 +31,7 @@ const DashboardLayout = () => {
   }, [apiculteurId, apiculteurs, user?.role]);
 
   return (
-    <div className="flex h-screen bg-[#f9f7f4] overflow-hidden">
+    <div className="flex h-screen bg-[#FDFAF4] overflow-hidden">
       {/* Sidebar — knows role and scope, builds its own menu */}
       <Sidebar
         role             = {user?.role}

@@ -39,6 +39,7 @@ const HiveCard = ({ hive, onHiveClick }) => {
   const doorOpen = latest?.door_open     ?? null
   const rssi     = latest?.rssi          ?? null
   const battV    = latest?.battery_v     ?? null
+  const weight    = latest?.weight_kg     ?? null
 
   const battPct = battV != null
     ? Math.min(100, Math.max(0, Math.round(((battV - 3.3) / 0.9) * 100)))
@@ -95,9 +96,9 @@ const HiveCard = ({ hive, onHiveClick }) => {
           loading={isLoading}
         />
         <Stat
-          label="BATTERIE"
-          value={battPct != null ? `${battPct}%` : null}
-          alert={battPct < 20}
+          label="POIDS"
+          value={weight != null ? `${weight.toFixed(1)}Kg` : null}
+          alert={weight < 10}
           loading={isLoading}
         />
       </div>

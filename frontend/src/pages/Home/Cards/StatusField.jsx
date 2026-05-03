@@ -13,7 +13,7 @@ const HoneyIcon = () => (
 
 const StateIcon = ({ urgent }) => (
   <svg width="43" height="43" viewBox="0 0 43 43" fill="none">
-    <rect width="42.6122" height="42.6122" rx="4" fill={urgent ? "#EF4444" : "#2F9D4A"} fillOpacity="0.1"/>
+    <rect width="42.6122" height="42.6122" rx="4" fill="#2F9D4A" fillOpacity="0.1"/>
     <g clipPath="url(#clip-state)">
       <path d="M30.2834 17.7403C29.8927 17.29 29.4097 16.9289 28.8672 16.6814C28.3248 16.434 27.7355 16.306 27.1393 16.3061H23.8151L24.0951 14.6053C24.1942 14.0064 24.0746 13.3917 23.7583 12.8736C23.442 12.3554 22.9499 11.9682 22.3719 11.7826C21.7939 11.597 21.1684 11.6254 20.6096 11.8625C20.0507 12.0997 19.5957 12.5298 19.3276 13.0745L17.9726 15.8203V28.8061H26.5559C27.5588 28.802 28.5269 28.4381 29.2841 27.7804C30.0413 27.1228 30.5372 26.2152 30.6818 25.2228L31.2693 21.0561C31.3523 20.4651 31.3073 19.8631 31.1372 19.2909C30.9671 18.7188 30.6759 18.19 30.2834 17.7403Z" fill={urgent ? "#EF4444" : "#2F9D4A"}/>
       <path d="M11.306 20.4729V24.6395C11.3073 25.7442 11.7467 26.8032 12.5278 27.5844C13.3089 28.3655 14.368 28.8049 15.4726 28.8062H16.306V16.3062H15.4726C14.368 16.3075 13.3089 16.7469 12.5278 17.5281C11.7467 18.3092 11.3073 19.3682 11.306 20.4729Z" fill={urgent ? "#EF4444" : "#2F9D4A"}/>
@@ -23,6 +23,13 @@ const StateIcon = ({ urgent }) => (
         <rect width="20" height="20" fill="white" transform="translate(11.306 11.3061)"/>
       </clipPath>
     </defs>
+  </svg>
+)
+
+const Urgent = () => (
+  <svg width="43" height="43" viewBox="0 0 43 43" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="21.0225" cy="21.0225" r="12.5" fill="white"/>
+    <circle cx="21.0225" cy="21.0225" r="4.5" fill="#DC2626"/>
   </svg>
 )
 
@@ -71,7 +78,7 @@ const StatusField = () => {
       subTitle   : hasUrgent
         ? `${alertCount} ruche${alertCount > 1 ? 's' : ''} nécessite${alertCount > 1 ? 'nt' : ''} attention`
         : 'Toutes les ruches sont parfaites',
-      icon       : <StateIcon urgent={hasUrgent} />,
+      icon       : hasUrgent ? <Urgent /> : <StateIcon />,
       urgent     : hasUrgent,
       isLoading,
     },

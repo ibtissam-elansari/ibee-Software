@@ -12,7 +12,7 @@ import ComparativeChart   from './components/ComparativeChart'
  * Shows current weight, daily delta, and a tiny sparkline placeholder.
  */
 const WeightPanel = ({ weight, trend, isLoading, onDetails }) => (
-  <div className="w-44 flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-3">
+  <div className="w-44 flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between gap-3">
     <div className="flex items-center justify-between">
       <span className="text-[10px] font-bold tracking-[0.16em] text-gray-400 uppercase">Poids</span>
       <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center">
@@ -24,7 +24,7 @@ const WeightPanel = ({ weight, trend, isLoading, onDetails }) => (
       <div className="h-9 w-28 bg-gray-100 rounded-lg animate-pulse" />
     ) : (
       <div>
-        <p className="text-3xl font-bold text-gray-900 tracking-tight leading-none">
+        <p className="text-3xl font-bold text-gray-900 tracking-tight leading-none py-3">
           {weight != null ? `${weight.toFixed(2)}kg` : '—'}
         </p>
         {trend && (
@@ -39,17 +39,6 @@ const WeightPanel = ({ weight, trend, isLoading, onDetails }) => (
         )}
       </div>
     )}
-
-    {/* Mini bar visual */}
-    <div className="flex items-end gap-0.5 h-8 mt-auto">
-      {[0.4,0.6,0.5,0.8,0.7,0.9,1.0].map((h,i) => (
-        <div
-          key={i}
-          className="flex-1 rounded-sm bg-gray-200"
-          style={{ height: `${h * 100}%`, opacity: i === 6 ? 1 : 0.5 + i * 0.07 }}
-        />
-      ))}
-    </div>
 
     <button
       onClick={onDetails}
@@ -80,7 +69,7 @@ const HiveAnalyticsPage = () => {
   } = useHiveAnalytics(id)
 
   return (
-    <div className="relative min-h-full overflow-hidden" style={{ background: '#FDFAF4' }}>
+    <div className="relative min-h-full overflow-hidden mt-2" style={{ background: '#FDFAF4' }}>
       <div className="relative z-10 flex flex-col gap-5 p-6">
 
         {/* ── Top bar ── */}

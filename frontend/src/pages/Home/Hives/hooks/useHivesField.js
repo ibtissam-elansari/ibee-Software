@@ -47,7 +47,7 @@ export function useHivesField() {
 
   const [search,    setSearch]    = useState('')
   const [filter,    setFilter]    = useState('Toutes')
-  const [view,      setView]      = useState('list')
+  const [view,      setView]      = useState('grid')
   const [page,      setPage]      = useState(1)
   const [selectedHive,  setSelectedHive]  = useState(null)
   const [addModalOpen,  setAddModalOpen]  = useState(false)
