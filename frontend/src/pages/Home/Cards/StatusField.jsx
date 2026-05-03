@@ -3,7 +3,6 @@ import StatusCard from './components/StatusCard'
 import { useDashboardStats } from '../../../hooks/useDashboardStats'
 import { ChevronRight } from 'lucide-react'
 
-// Icons — keep your existing SVGs, just moved here
 const HoneyIcon = () => (
   <svg width="43" height="43" viewBox="0 0 43 43" fill="none">
     <rect width="42.6122" height="42.6122" rx="4" fill="#EAB308" fillOpacity="0.1"/>
@@ -27,7 +26,7 @@ const StateIcon = ({ urgent }) => (
 )
 
 const Urgent = () => (
-  <svg width="43" height="43" viewBox="0 0 43 43" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg width="43" height="43" viewBox="0 0 43 43" fill="none">
     <circle cx="21.0225" cy="21.0225" r="12.5" fill="white"/>
     <circle cx="21.0225" cy="21.0225" r="4.5" fill="#DC2626"/>
   </svg>
@@ -49,7 +48,6 @@ const SecurityIcon = () => (
   </svg>
 )
 
-
 const StatusField = () => {
   const {
     isLoading,
@@ -59,15 +57,16 @@ const StatusField = () => {
     secureCount,
     doorOpenCount,
     totalWithData,
+    openHives,      // ← array of hive objects where door_open === true
   } = useDashboardStats()
 
   const cards = [
     {
-      label      : 'Etat',
-      state      : 'Ruches actives',
-      title      : isLoading ? null : `${totalHives}/${totalHives}`,
-      subTitle   : isLoading ? '...' : `${totalHives} ruche${totalHives > 1 ? 's' : ''} active${totalHives > 1 ? 's' : ''}`,
-      icon       : <HoneyIcon />,
+      label    : 'Etat',
+      state    : 'Ruches actives',
+      title    : isLoading ? null : `${totalHives}/${totalHives}`,
+      subTitle : isLoading ? '...' : `${totalHives} ruche${totalHives > 1 ? 's' : ''} active${totalHives > 1 ? 's' : ''}`,
+      icon     : <HoneyIcon />,
       isLoading,
     },
     {
@@ -78,8 +77,8 @@ const StatusField = () => {
       subTitle   : hasUrgent
         ? `${alertCount} ruche${alertCount > 1 ? 's' : ''} nécessite${alertCount > 1 ? 'nt' : ''} attention`
         : 'Toutes les ruches sont parfaites',
-      icon       : hasUrgent ? <Urgent /> : <StateIcon />,
-      urgent     : hasUrgent,
+      icon     : hasUrgent ? <Urgent /> : <StateIcon />,
+      urgent   : hasUrgent,
       isLoading,
     },
     {
@@ -90,13 +89,11 @@ const StatusField = () => {
       subTitle   : doorOpenCount > 0
         ? `${doorOpenCount} ruche${doorOpenCount > 1 ? 's' : ''} ouverte${doorOpenCount > 1 ? 's' : ''}`
         : 'Toutes les ruches sont fermées',
-      icon       : <SecurityIcon />,
-      extra      : (
-        <button className="p-1 rounded-full hover:bg-base-200 transition-colors">
-          <ChevronRight className="w-4 h-4 text-base-content/40" />
-        </button>
-      ),
+      icon      : <SecurityIcon />,
       isLoading,
+      // Only pass openHives when there are actually open hives — the card
+      // renders the chevron + popover automatically when this is non-empty
+      openHives : doorOpenCount > 0 ? openHives : [],
     },
   ]
 

@@ -1,9 +1,8 @@
-// /frontend/src/hooks/useDashboardStats.js
+// hooks/useDashboardStats.js
 import { useQuery }  from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { getHiveLatest } from '../api/hives'
 import { useHiveList }   from './useHives'
-import { measurementAlertStatus, DEFAULT_THRESHOLDS } from './useHiveThresholds'
 
 const SOUND_THRESHOLD   = 70
 const BATTERY_THRESHOLD = 3.5
@@ -24,8 +23,9 @@ export function useDashboardStats() {
       if (!hives.length) return []
       const results = await Promise.allSettled(hives.map(h => getHiveLatest(h.id)))
       return results.map((r, i) => ({
-        hive_id: hives[i].id,
-        data   : r.status === 'fulfilled' ? r.value : null,
+        hive_id : hives[i].id,
+        hive    : hives[i],             // ← carry the full hive object
+        data    : r.status === 'fulfilled' ? r.value : null,
       }))
     },
     enabled        : hives.length > 0,
@@ -36,12 +36,23 @@ export function useDashboardStats() {
   const latestByHive = latestQuery.data ?? []
   const totalHives   = hives.length
 
-  const doorOpenCount = latestByHive.filter(({ data }) => data?.door_open === true).length
+  // ── Security ───────────────────────────────────────────────────────────────
+  const openEntries   = latestByHive.filter(({ data }) => data?.door_open === true)
+  const doorOpenCount = openEntries.length
   const secureCount   = latestByHive.filter(({ data }) => data !== null && !data?.door_open).length
 
+  // The actual hive objects that are currently open — used by the popover
+  const openHives = openEntries.map(({ hive }) => hive).filter(Boolean)
+
+  // ── Alerts ─────────────────────────────────────────────────────────────────
   const alertHives = latestByHive.filter(({ data }) => {
     if (!data) return false
-    return measurementAlertStatus(data, DEFAULT_THRESHOLDS) !== 'normal'
+    return (
+      data.door_open === true                            ||
+      (data.sound_level   ?? 0)   > SOUND_THRESHOLD     ||
+      (data.temperature_c ?? 0)   > 38                  ||
+      (data.battery_v     ?? 999) < BATTERY_THRESHOLD
+    )
   })
 
   return {
@@ -52,6 +63,7 @@ export function useDashboardStats() {
     alertCount   : alertHives.length,
     secureCount,
     doorOpenCount,
+    openHives,                          // ← new
     totalWithData: latestByHive.filter(({ data }) => data !== null).length,
   }
 }
