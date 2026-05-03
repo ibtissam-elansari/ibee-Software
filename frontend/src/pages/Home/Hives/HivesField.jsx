@@ -73,7 +73,7 @@ const HivesField = () => {
 
   return (
     <>
-      <div className="flex flex-col gap-5 p-2 px-5 border rounded-2xl bg-white">
+      <div className="flex flex-col gap-5 p-2 pb-4 px-5 border rounded-2xl bg-white z-10">
 
         {/* Heading */}
         <h2 className="text-2xl font-bold text-gray-900 mt-1">Les ruches</h2>
