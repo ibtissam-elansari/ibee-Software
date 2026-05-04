@@ -179,7 +179,7 @@ const HivesTab = ({ hives, hivesLoading, profiles, onAssign, onUnassign, assigni
       {/* ── Hive grid ──────────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0 flex flex-col gap-4">
         <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-xs">
+          <div className="relative flex-1 max-w-xs bg-white">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
             <input
               value={search}
@@ -238,7 +238,6 @@ const HivesTab = ({ hives, hivesLoading, profiles, onAssign, onUnassign, assigni
                     {/* Footer */}
                     <div className="px-3 py-2.5 flex items-center justify-between">
                       <span className="text-sm font-semibold text-gray-800">{hive.name}</span>
-                      <ChevronRight size={14} className="text-gray-400" />
                     </div>
                   </button>
                 );
@@ -261,7 +260,7 @@ const HivesTab = ({ hives, hivesLoading, profiles, onAssign, onUnassign, assigni
           <span className="text-xs text-gray-400">Total : {profiles.length}</span>
         </div>
 
-        <div className="relative">
+        <div className="relative bg-white">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
           <input
             value={panelSearch}
