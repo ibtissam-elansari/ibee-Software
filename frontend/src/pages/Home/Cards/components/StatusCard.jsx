@@ -2,19 +2,15 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { LockOpen, X, ChevronDown } from 'lucide-react'
 
-const POPOVER_WIDTH = 236
-
-const OpenHivesPopover = ({ hives, anchorRef, cardRef, onClose }) => {
-  const popoverRef   = useRef(null)
-  const [pos, setPos] = useState({ top: 0, left: 0 })
+const OpenHivesPopover = ({ hives, cardRef, anchorRef, onClose }) => {
+  const popoverRef    = useRef(null)
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 })
 
   const reposition = useCallback(() => {
-    // Anchor to the bottom-right of the whole card (not just the button)
-    const rect = (cardRef?.current ?? anchorRef.current)?.getBoundingClientRect()
+    const rect = cardRef?.current?.getBoundingClientRect()
     if (!rect) return
-    const left = Math.max(8, rect.right - POPOVER_WIDTH)
-    setPos({ top: rect.bottom + 8, left })
-  }, [anchorRef, cardRef])
+    setPos({ top: rect.bottom + 8, left: rect.left, width: rect.width })
+  }, [cardRef])
 
   useEffect(() => {
     reposition()
@@ -46,7 +42,7 @@ const OpenHivesPopover = ({ hives, anchorRef, cardRef, onClose }) => {
   return createPortal(
     <div
       ref={popoverRef}
-      style={{ position: 'fixed', top: pos.top, left: pos.left, width: POPOVER_WIDTH, zIndex: 9999 }}
+      style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 9999 }}
       className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden"
     >
       {/* Header */}
@@ -68,7 +64,10 @@ const OpenHivesPopover = ({ hives, anchorRef, cardRef, onClose }) => {
       {/* Hive rows */}
       <div className="overflow-y-auto divide-y divide-gray-50" style={{ maxHeight: '200px' }}>
         {hives.map((hive, i) => (
-          <div key={hive.id ?? i} className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors">
+          <div
+            key={hive.id ?? i}
+            className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+          >
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-6 h-6 rounded-md bg-red-50 flex items-center justify-center flex-shrink-0">
                 <LockOpen className="w-3 h-3 text-red-500" />
@@ -98,36 +97,26 @@ const OpenHivesPopover = ({ hives, anchorRef, cardRef, onClose }) => {
   )
 }
 
-// ── Status card ────────────────────────────────────────────────────────────────
 const StatusCard = ({ card }) => {
   const {
-    label,
-    state,
-    stateColor,
-    title,
-    subTitle,
-    icon,
-    isLoading,
-    urgent,
-    openHives,
+    label, state, stateColor, title, subTitle,
+    icon, isLoading, urgent, openHives,
   } = card
 
   const [popoverOpen, setPopoverOpen] = useState(false)
-  const btnRef     = useRef(null)
-  const cardRef    = useRef(null)
-  const hasOpen    = openHives && openHives.length > 0
+  const btnRef  = useRef(null)
+  const cardRef = useRef(null)
+  const hasOpen = openHives && openHives.length > 0
 
   return (
     <div
       ref={cardRef}
       className={`
         relative flex flex-col justify-between
-        rounded-2xl shadow-md border p-4
-        min-h-[150px] transition-all duration-300
+        rounded-2xl shadow-md border p-4 min-h-[150px] transition-all duration-300
         ${urgent ? 'border-red-400 bg-red-50' : 'border-base-200 bg-white'}
       `}
     >
-      {/* Top row */}
       <div className="flex flex-row justify-between items-start">
         <div>
           {label && <p className="text-xs text-base-content/60 font-medium mb-1">{label}</p>}
@@ -136,7 +125,6 @@ const StatusCard = ({ card }) => {
         <div className="flex-shrink-0">{icon}</div>
       </div>
 
-      {/* Bottom row */}
       <div className="flex flex-col items-baseline w-full">
         {isLoading
           ? <div className="h-8 w-24 bg-base-200 rounded animate-pulse mt-2" />
@@ -148,7 +136,6 @@ const StatusCard = ({ card }) => {
         }
       </div>
 
-      {/* Chevron trigger */}
       {hasOpen && (
         <button
           ref={btnRef}
@@ -165,8 +152,8 @@ const StatusCard = ({ card }) => {
       {hasOpen && popoverOpen && (
         <OpenHivesPopover
           hives={openHives}
-          anchorRef={btnRef}
           cardRef={cardRef}
+          anchorRef={btnRef}
           onClose={() => setPopoverOpen(false)}
         />
       )}
