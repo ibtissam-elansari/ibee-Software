@@ -1,0 +1,12 @@
+# railway.toml
+# Place ce fichier dans ton dossier backend/
+# Railway le détecte automatiquement
+
+[build]
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
