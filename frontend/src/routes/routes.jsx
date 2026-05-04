@@ -11,6 +11,7 @@ import useAuthStore    from '../store/useAuthStore';
 import AuthPage             from '../pages/Auth/AuthPage';
 import HomePage             from '../pages/Home/HomePage';
 import GestionPage          from '../pages/Gestion/GestionPage';
+import GestionParametresPage          from '../pages/Gestion/GestionParametresPage';
 import HiveAnalyticsPage    from '../pages/Analytics/HiveAnalyticsPage';
 import MetricDetailPage     from '../pages/Analytics/MetricDetailPage';
 import AlertStatsPage       from '../pages/AlertStats/AlertStatsPage';
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
         { index: true,                                 element: <Navigate to="dashboard" replace /> },
         { path: 'dashboard',                           element: <HomePage /> },
         { path: 'gestion',                             element: <GestionPage /> },
+        { path: 'thresholds',                          element: <GestionParametresPage /> },
         { path: 'gestion/:hiveId',                     element: <HiveAnalyticsPage /> },
         { path: 'gestion/:hiveId/details/:metric',     element: <MetricDetailPage /> },
         { path: 'statistique-alertes',                 element: <AlertStatsPage /> },
