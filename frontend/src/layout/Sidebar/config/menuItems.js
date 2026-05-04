@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Building2,
   Settings,
+  Cog,
   Users,
   BellRing,
   Wrench,
@@ -42,15 +43,16 @@ export function getMenuItems(role, scopedApiculteur) {
   }
 
   items.push(
-    { key: 'dashboard', label: 'Dashboard',          path: `${base}/dashboard`,           icon: LayoutDashboard,  end: true },
-    { key: 'gestion',   label: 'Gestion des ruches', path: `${base}/gestion`,             icon: Wrench,           end: false },
-    { key: 'alerts',    label: 'Alertes',            path: `${base}/statistique-alertes`, icon: BellRing,         end: true  },
+    { key: 'dashboard',   label: 'Dashboard',              path: `${base}/dashboard`,           icon: LayoutDashboard,  end: true },
+    { key: 'gestion',     label: 'Gestion des ruches',     path: `${base}/gestion`,             icon: Cog,           end: true },
+    { key: 'thresholds',  label: 'Parametres',             path: `${base}/thresholds`,          icon: Wrench,           end: false },
+    { key: 'alerts',      label: 'Alertes',                path: `${base}/statistique-alertes`, icon: BellRing,         end: true  },
   );
 
   if (role === 'admin') {
     items.push(
       // end: true → /parametres/compte does NOT activate this item
-      { key: 'compte',  label: 'Gestion des compte', path: `${base}/parametres/compte`,  icon: Settings,   end: true },
+      { key: 'compte',  label: 'Gestion des compte', path: `${base}/parametres/compte`,  icon: Settings,   end: false },
       { key: 'support',   label : 'Support',           path: `${base}/support`,             icon: HeadphonesIcon,   end: true },
     );
   }
