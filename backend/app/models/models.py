@@ -204,7 +204,10 @@ class HiveThreshold(SQLModel, table=True):
     # Weight drop alert (alert when daily loss EXCEEDS this value in kg) (NEW)
     weight_drop_kg : Optional[float] = Field(default=None)
     # Metadata
-    updated_at     : datetime        = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), onupdate=_utcnow),
+    )
     updated_by_id  : Optional[int]   = Field(default=None, foreign_key="user.id")
 
     # ------ support --------
@@ -248,5 +251,8 @@ class SupportTicket(SQLModel, table=True):
     responded_at   : Optional[datetime] = Field(default=None)
 
     created_at     : datetime           = Field(default_factory=_utcnow, index=True)
-    updated_at     : datetime           = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), onupdate=_utcnow),
+    )
     closed_at      : Optional[datetime] = Field(default=None)
