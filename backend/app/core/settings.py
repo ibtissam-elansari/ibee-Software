@@ -2,36 +2,58 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urlparse, urlunparse, quote
+
 from pydantic import BaseModel
 
 
 def _fix_db_url(url: str) -> str:
     """
-    Railway (et d'autres services) injectent DATABASE_URL au format :
-      postgresql://user:pass@host:5432/db
-    ou
-      postgres://user:pass@host:5432/db
+    Fixes two issues with Railway-injected DATABASE_URL:
 
-    SQLAlchemy avec psycopg3 (async) exige le préfixe :
-      postgresql+psycopg://...
+    1. Wrong scheme: converts postgres:// or postgresql:// → postgresql+psycopg://
+    2. Special characters in password (@, +, #, %, etc.) that break URL parsing.
 
-    Cette fonction corrige automatiquement le préfixe quel que soit
-    le format fourni par la plateforme.
+    Strategy: parse the URL, percent-encode the password, rebuild cleanly.
     """
-    if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql+psycopg://", 1)
-    if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+psycopg://", 1)
-    # Déjà au bon format ou URL locale — on laisse tel quel
-    return url
+    if not url:
+        return url
+
+    # Step 1 — normalise scheme so urlparse can handle it
+    normalised = url
+    if normalised.startswith("postgres://"):
+        normalised = "postgresql" + normalised[len("postgres"):]
+    # Now it starts with postgresql://
+
+    # Step 2 — parse
+    parsed = urlparse(normalised)
+
+    # Step 3 — encode password (handles @, +, #, %, spaces, etc.)
+    password = parsed.password or ""
+    encoded_password = quote(password, safe="")
+
+    # Step 4 — rebuild netloc with encoded password
+    username = parsed.username or ""
+    host     = parsed.hostname or ""
+    port     = f":{parsed.port}" if parsed.port else ""
+    netloc   = f"{username}:{encoded_password}@{host}{port}"
+
+    # Step 5 — rebuild full URL with correct async scheme
+    fixed = urlunparse((
+        "postgresql+psycopg",   # scheme
+        netloc,
+        parsed.path,
+        parsed.params,
+        parsed.query,
+        parsed.fragment,
+    ))
+
+    return fixed
 
 
 class Settings(BaseModel):
     env: str = os.getenv("ENV", "local")
 
-    # ── Database ─────────────────────────────────────────────────────────────
-    # Railway injecte DATABASE_URL au format postgresql:// ou postgres://
-    # _fix_db_url() le convertit en postgresql+psycopg:// pour psycopg3 async
     database_url: str = _fix_db_url(
         os.getenv(
             "DATABASE_URL",
@@ -39,10 +61,8 @@ class Settings(BaseModel):
         )
     )
 
-    # ── Auth ──────────────────────────────────────────────────────────────────
     secret_key: str = os.getenv("SECRET_KEY", "change-me-in-production")
 
-    # ── CORS ──────────────────────────────────────────────────────────────────
     allowed_origins: list[str] = [
         o.strip()
         for o in os.getenv(
@@ -52,7 +72,6 @@ class Settings(BaseModel):
         if o.strip()
     ]
 
-    # ── SSE ───────────────────────────────────────────────────────────────────
     sse_poll_interval: float = float(os.getenv("SSE_POLL_INTERVAL", "2.0"))
 
 
