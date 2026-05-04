@@ -77,9 +77,9 @@ class User(SQLModel, table=True):
 
         role_val = role.value if isinstance(role, UserRole) else role
 
-        if role_val == "SUPERUSER" and apiculteur_id is not None:
+        if role_val == "superuser" and apiculteur_id is not None:
             raise ValueError("Un superuser ne peut pas appartenir à un apiculteur")
-        if role_val != "SUPERUSER" and apiculteur_id is None:
+        if role_val != "superuser" and apiculteur_id is None:
             if key == "apiculteur_id":
                 raise ValueError("Un admin/user doit appartenir à un apiculteur")
 
