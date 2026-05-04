@@ -51,6 +51,9 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     role: Optional[str] = None
     apiculteur_id: Optional[int] = None
+    full_name : Optional[str] 
+    phone     : Optional[str]
+    location  : Optional[str]
 
 
 class UserOut(BaseModel):
@@ -59,6 +62,9 @@ class UserOut(BaseModel):
     role: str
     apiculteur_id: Optional[int]
     created_at: datetime
+    full_name : Optional[str] 
+    phone     : Optional[str]
+    location  : Optional[str]
 
     class Config:
         from_attributes = True

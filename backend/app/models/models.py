@@ -48,6 +48,9 @@ class User(SQLModel, table=True):
     email           : str            = Field(unique=True, index=True)
     hashed_password : str
     role            : UserRole       = Field(default=UserRole.USER)
+    full_name : Optional[str] = Field(default=None)
+    phone     : Optional[str] = Field(default=None)
+    location  : Optional[str] = Field(default=None)
     apiculteur_id   : Optional[int]  = Field(
         default=None,
         foreign_key="apiculteur.id",
