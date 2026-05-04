@@ -1,0 +1,40 @@
+# render.yaml
+# Place ce fichier à la RACINE de ton repo GitHub (pas dans /backend)
+# Render le détecte automatiquement et configure tout en un clic.
+
+services:
+  # ── Backend FastAPI ──────────────────────────────────────────────────────
+  - type: web
+    name: ibee-backend
+    runtime: docker
+    # Chemin vers le dossier contenant le Dockerfile
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+
+    # Render injecte PORT automatiquement — déjà géré dans le Dockerfile
+    healthCheckPath: /health
+
+    envVars:
+      - key: ENV
+        value: production
+
+      - key: DATABASE_URL
+        # Render remplace automatiquement cette valeur avec l'URL de la DB ci-dessous
+        fromDatabase:
+          name: ibee-db
+          property: connectionString
+
+      # ⚠️  IMPORTANT : change cette valeur — ne laisse pas "change-me"
+      - key: SECRET_KEY
+        generateValue: true   # Render génère une valeur aléatoire sécurisée
+
+      # Origins autorisées pour CORS — remplace par ton URL Vercel après déploiement
+      - key: ALLOWED_ORIGINS
+        value: "https://ibee.vercel.app"
+
+# ── PostgreSQL ─────────────────────────────────────────────────────────────
+databases:
+  - name: ibee-db
+    databaseName: ibee
+    user: ibee
+    plan: free   # Gratuit 90 jours, puis ~7$/mois
