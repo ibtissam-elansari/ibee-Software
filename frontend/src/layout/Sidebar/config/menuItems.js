@@ -23,7 +23,6 @@ export function getMenuItems(role, scopedApiculteur) {
       { key: 'roles',       label: 'Gestion des rôles', path: '/parametres/roles', icon: Users,        end: true  },
       // end: true → only active when path is EXACTLY /parametres/profile, not /parametres/roles
       { key: 'support',  label : 'Support',       path  : '/support',          icon  : HeadphonesIcon,  end: true },
-      { key: 'profile',  label: 'Profile',        path: '/parametres/profile', icon: Settings,          end: true  },
     ];
   }
 
@@ -53,8 +52,6 @@ export function getMenuItems(role, scopedApiculteur) {
       // end: true → /parametres/compte does NOT activate this item
       { key: 'compte',  label: 'Gestion des compte', path: `${base}/parametres/compte`,  icon: Settings,   end: true },
       { key: 'support',   label : 'Support',           path: `${base}/support`,             icon: HeadphonesIcon,   end: true },
-      // end: true → /parametres/profile does NOT activate 'compte' item
-      { key: 'profile', label: 'Profile',             path: `${base}/parametres/profile`, icon: UserCircle, end: true },
     );
   }
 
@@ -62,7 +59,6 @@ export function getMenuItems(role, scopedApiculteur) {
     items.push(
       { key: 'support',   label : 'Support',           path: `${base}/support`,             icon: HeadphonesIcon,   end: true },
       // end: true → /parametres/profile does NOT activate 'compte' item
-      { key: 'profile', label: 'Profile',             path: `${base}/parametres/profile`, icon: UserCircle, end: true },
     );
   }
 
