@@ -60,8 +60,9 @@ class User(SQLModel, table=True):
 
     __table_args__ = (
         CheckConstraint(
-            "(role = 'superuser' AND apiculteur_id IS NULL) OR "
-            "(role != 'superuser' AND apiculteur_id IS NOT NULL)",
+            # Cast the string literals to the enum type explicitly
+            "(role = 'superuser'::userrole AND apiculteur_id IS NULL) OR "
+            "(role != 'superuser'::userrole AND apiculteur_id IS NOT NULL)",
             name="ck_user_role_apiculteur",
         ),
     )
