@@ -65,13 +65,13 @@ const ApiculteursPage = () => {
 
       {/* Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="h-52 bg-gray-100 rounded-2xl animate-pulse" />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           {filtered.map((apiculteur) => (
             <ApiculteurCard
               key             = {apiculteur.id}
