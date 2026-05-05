@@ -42,7 +42,7 @@ const Sidebar = ({ role, scopedApiculteur, onNavigate }) => {
   const roleStyle   = roleColors[role] ?? roleColors.user;
 
   return (
-    <aside className="w-[230px] min-h-screen h-full bg-white border-r border-gray-100 flex flex-col">
+    <aside className="w-[230px] h-full bg-white border-r border-gray-100 flex flex-col">
 
       {/* ── Logo ─────────────────────────────────────────────── */}
       <div className="px-5 py-5 border-b border-gray-100">
