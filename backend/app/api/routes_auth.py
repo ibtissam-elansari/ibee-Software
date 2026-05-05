@@ -242,39 +242,3 @@ async def delete_user(
 
     await session.delete(user)
     await session.commit()
-
-
-# Add this to backend/app/api/routes_auth.py temporarily
-# Remove it after creating your first superuser
-
-@router.post("/seed-superuser", include_in_schema=False)
-async def seed_superuser(session: AsyncSession = Depends(get_session)):
-    """
-    One-time endpoint to create the first superuser.
-    DELETE THIS ROUTE after first use.
-    """
-    # Check if any superuser already exists
-    existing = (await session.execute(
-        select(User).where(User.role == UserRole.SUPERUSER)
-    )).scalars().first()
-
-    if existing:
-        return {"message": "superuser already exists", "email": existing.email}
-
-    user = User(
-        email           = "super@ibee.com",
-        hashed_password = hash_password("iBee@2026!"),
-        role            = UserRole.SUPERUSER,
-        apiculteur_id   = None,
-        full_name       = "Super Admin",
-    )
-    session.add(user)
-    await session.commit()
-    await session.refresh(user)
-
-    return {
-        "message"  : "superuser created successfully",
-        "email"    : user.email,
-        "password" : "iBee@2026!",
-        "reminder" : "Change your password after first login and DELETE this endpoint",
-    }
