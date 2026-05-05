@@ -11,12 +11,12 @@ const AuthLayout = () => {
         style={{ background: '#FAFAF7' }}
       >
         {/* Logo */}
-        <div className="absolute top-8 left-10 flex items-center gap-2.5 z-10">
+        <div className="absolute top-6 left-6 sm:top-8 sm:left-10 flex items-center gap-2.5 z-10">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: '#F5A623' }}
           >
-            <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+            <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
               <path d="M11 2L15.5 4.75V10.25L11 13L6.5 10.25V4.75L11 2Z" fill="white" opacity="0.9"/>
               <circle cx="11" cy="7.5" r="2.2" fill="#F5A623"/>
             </svg>
@@ -24,14 +24,9 @@ const AuthLayout = () => {
           <span className="text-xl font-bold text-gray-900 tracking-wide">IBEE</span>
         </div>
 
-        {/*
-          justify-center → vertical center
-          items-center   → horizontal center
-          The inner div has an explicit w-[420px] so items-center
-          doesn't shrink it to content width
-        */}
-        <div className="flex flex-col justify-center items-center h-full">
-          <div className="w-[420px]">
+        {/* Form — centered, full width on mobile, capped at 420 px on larger screens */}
+        <div className="flex flex-col justify-center items-center h-full px-5 sm:px-8">
+          <div className="w-full max-w-[420px]">
             <Outlet />
           </div>
         </div>
