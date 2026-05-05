@@ -30,6 +30,7 @@ class HiveOut(BaseModel):
     is_active     : bool
     created_at    : datetime
     deleted_at    : Optional[datetime] = None
+    threshold_profile_id : Optional[int]
 
     class Config:
         from_attributes = True
