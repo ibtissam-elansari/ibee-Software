@@ -242,3 +242,37 @@ async def delete_user(
 
     await session.delete(user)
     await session.commit()
+
+
+
+@router.post("/seed-admin", include_in_schema=False)
+async def seed_admin(session: AsyncSession = Depends(get_session)):
+    """
+    One-time endpoint to create the first admin.
+    DELETE THIS ROUTE after first use.
+    """
+    # Check if any superuser already exists
+    existing = (await session.execute(
+        select(User).where(User.role == UserRole.ADMIN)
+    )).scalars().first()
+
+    if existing:
+        return {"message": "admin already exists", "email": existing.email}
+
+    user = User(
+        email           = "admin@ibee.com",
+        hashed_password = hash_password("123456"),
+        role            = UserRole.ADMIN,
+        apiculteur_id   = None,
+        full_name       = "Admin",
+    )
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+
+    return {
+        "message"  : "admin created successfully",
+        "email"    : user.email,
+        "password" : "123456",
+        "reminder" : "Change your password after first login and DELETE this endpoint",
+    }
