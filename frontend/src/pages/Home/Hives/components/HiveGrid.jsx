@@ -68,31 +68,36 @@ const HiveCard = ({ hive, onHiveClick }) => {
       </div>
 
       {/* Stats — 2×2 grid so values never run together */}
-      <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-3">
-        <Stat
-          label="TEMP"
-          value={temp != null ? `${temp.toFixed(1)}°C` : null}
-          alert={temp > 40}
-          loading={isLoading}
-        />
-        <Stat
-          label="HUMIDITÉ"
-          value={humidity != null ? `${humidity.toFixed(0)}%` : null}
-          alert={humidity > 80}
-          loading={isLoading}
-        />
-        <Stat
-          label="SONORE"
-          value={sound != null ? `${sound * 2}Hz` : null}
-          alert={sound > 80}
-          loading={isLoading}
-        />
-        <Stat
-          label="POIDS"
-          value={weight != null ? `${weight.toFixed(1)}kg` : null}
-          alert={weight < 10}
-          loading={isLoading}
-        />
+      <div >
+        <div className='flex flex-row justify-around mb-4'>
+          <Stat
+            label="TEMP"
+            value={temp != null ? `${temp.toFixed(1)}°C` : null}
+            alert={temp > 40}
+            loading={isLoading}
+          />
+          <Stat
+            label="HUMIDITÉ"
+            value={humidity != null ? `${humidity.toFixed(0)}%` : null}
+            alert={humidity > 80}
+            loading={isLoading}
+          />
+        </div>
+
+        <div className='flex flex-row justify-around mb-4'>
+          <Stat
+            label="SONORE"
+            value={sound != null ? `${sound * 2}Hz` : null}
+            alert={sound > 80}
+            loading={isLoading}
+          />
+          <Stat
+            label="POIDS"
+            value={weight != null ? `${weight.toFixed(1)}kg` : null}
+            alert={weight < 10}
+            loading={isLoading}
+          />
+        </div>
       </div>
 
       {/* Footer row */}
