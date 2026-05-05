@@ -1,5 +1,4 @@
 import { Outlet } from 'react-router';
-import beeImage from '../assets/bee.png';
 
 const AuthLayout = () => {
   return (
@@ -50,12 +49,6 @@ const AuthLayout = () => {
           <circle cx="80"  cy="820" r="300" stroke="white" strokeWidth="1.2" fill="none"/>
           <circle cx="80"  cy="820" r="200" stroke="white" strokeWidth="1.2" fill="none"/>
         </svg>
-        <img
-          src={beeImage}
-          alt="IBEE bee"
-          className="relative z-10 w-[70%] max-w-[420px] opacity-10"
-          style={{ objectFit: 'contain' }}
-        />
       </div>
     </div>
   );
