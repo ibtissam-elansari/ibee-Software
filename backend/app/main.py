@@ -13,8 +13,8 @@ from app.db.engine                import create_db_and_tables
 from app.api.routes_auth          import router as auth_router
 from app.api.routes_notifications import router as notifications_router
 from app.api.routes_alert_stats   import router as alert_stats_router
-from app.api.routes_apiculteurs   import router as apiculteurs_router  
-from app.api.routes_support import router as support_router
+from app.api.routes_apiculteurs   import router as apiculteurs_router
+from app.api.routes_support       import router as support_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,10 +30,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins     = settings.allowed_origins,
+    allow_credentials = True,
+    allow_methods     = ["*"],
+    allow_headers     = ["*"],
 )
 
 app.include_router(health_router)
