@@ -15,6 +15,7 @@ from app.api.routes_notifications import router as notifications_router
 from app.api.routes_alert_stats   import router as alert_stats_router
 from app.api.routes_apiculteurs   import router as apiculteurs_router
 from app.api.routes_support       import router as support_router
+from app.api.routes_threshold_profiles import router as threshold_profiles_router
 
 
 @asynccontextmanager
@@ -44,13 +45,14 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
-app.include_router(webhooks_router,      prefix="/webhooks", tags=["webhooks"])
-app.include_router(hives_router,         prefix="/api",      tags=["api"])
-app.include_router(auth_router,          prefix="/auth",     tags=["auth"])
-app.include_router(notifications_router, prefix="/api",      tags=["notifications"])
-app.include_router(alert_stats_router,   prefix="/api",      tags=["alert-stats"])
-app.include_router(apiculteurs_router,   prefix="/api",      tags=["apiculteurs"])
-app.include_router(support_router,       prefix="/api",      tags=["support"])
+app.include_router(webhooks_router,             prefix="/webhooks", tags=["webhooks"])
+app.include_router(hives_router,                prefix="/api",      tags=["api"])
+app.include_router(auth_router,                 prefix="/auth",     tags=["auth"])
+app.include_router(notifications_router,        prefix="/api",      tags=["notifications"])
+app.include_router(alert_stats_router,          prefix="/api",      tags=["alert-stats"])
+app.include_router(apiculteurs_router,          prefix="/api",      tags=["apiculteurs"])
+app.include_router(support_router,              prefix="/api",      tags=["support"])
+app.include_router(threshold_profiles_router, prefix="/api")
 
 
 @app.get("/", tags=["root"])

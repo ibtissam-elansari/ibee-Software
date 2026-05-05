@@ -101,6 +101,11 @@ class Hive(SQLModel, table=True):
         foreign_key="apiculteur.id",
         index=True,
     )
+    threshold_profile_id : Optional[int] = Field(
+        default=None,
+        foreign_key="threshold_profile.id",
+        index=True,
+    )
     is_active     : bool               = Field(default=True)
     created_at    : datetime           = Field(default_factory=_utcnow, index=True)
     deleted_at    : Optional[datetime] = Field(default=None)
@@ -256,3 +261,24 @@ class SupportTicket(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), onupdate=_utcnow),
     )
     closed_at      : Optional[datetime] = Field(default=None)
+
+
+class ThresholdProfile(SQLModel, table=True):
+    """
+    Named reusable threshold template scoped to one apiculteur.
+    Applying it to a hive upserts that hive's HiveThreshold row.
+    """
+    __tablename__ = "threshold_profile"
+
+    id             : Optional[int]   = Field(default=None, primary_key=True)
+    apiculteur_id  : int             = Field(foreign_key="apiculteur.id", index=True)
+    name           : str
+    temp_attention : Optional[float] = Field(default=None)
+    temp_urgente   : Optional[float] = Field(default=None)
+    hum_attention  : Optional[float] = Field(default=None)
+    hum_urgente    : Optional[float] = Field(default=None)
+    battery_v      : Optional[float] = Field(default=None)
+    sound_level    : Optional[int]   = Field(default=None)
+    weight_drop_kg : Optional[float] = Field(default=None)
+    created_at     : datetime        = Field(default_factory=_utcnow)
+    updated_at     : datetime        = Field(default_factory=_utcnow)
