@@ -1,42 +1,16 @@
 // src/pages/Gestion/components/ThresholdProfileModal.jsx
+//
+// Fields mirror the HiveThreshold model exactly:
+//   temp_attention, temp_urgente, hum_attention, hum_urgente,
+//   battery_v, sound_level, weight_drop_kg
+//
+// All fields are optional — NULL means "keep the global default for this metric".
 
 import { useEffect, useState } from 'react';
-import { X, Plus, Pencil, Trash2, Thermometer, Droplets, Volume2, Weight } from 'lucide-react';
+import { X, Plus, Pencil, Trash2, Thermometer, Droplets, Volume2, BatteryLow, Weight } from 'lucide-react';
 
-/* ── Reusable number input ─────────────────────────────────────────────────── */
-const NumInput = ({ label, value, onChange, unit, placeholder = '—' }) => (
-  <div className="flex flex-col gap-1">
-    <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</span>
-    <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-2.5 py-2
-                    focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-100 transition">
-      <input
-        type="number"
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-        placeholder={placeholder}
-        className="w-full text-sm text-gray-800 outline-none bg-transparent min-w-0 placeholder:text-gray-300"
-      />
-      <span className="text-xs text-gray-400 flex-shrink-0">{unit}</span>
-    </div>
-  </div>
-);
+/* ── shared primitives ───────────────────────────────────────────────────── */
 
-/* ── Metric section (Attention + Urgente) ──────────────────────────────────── */
-const MetricSection = ({ icon: Icon, colorClass, title, fields, unit }) => (
-  <div className="rounded-xl border border-gray-100 overflow-hidden">
-    <div className={`flex items-center gap-2.5 px-4 py-2.5 border-b ${colorClass}`}>
-      <Icon size={14} />
-      <span className="text-sm font-semibold">{title}</span>
-    </div>
-    <div className={`grid grid-cols-2 gap-3 px-4 py-3.5 bg-gray-50/40`}>
-      {fields.map(({ label, key, value, onChange }) => (
-        <NumInput key={key} label={label} unit={unit} value={value} onChange={onChange} />
-      ))}
-    </div>
-  </div>
-);
-
-/* ── Backdrop + shell ──────────────────────────────────────────────────────── */
 const Backdrop = ({ onClose, children }) => (
   <div
     className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
@@ -46,8 +20,35 @@ const Backdrop = ({ onClose, children }) => (
   </div>
 );
 
+const NumInput = ({ label, value, onChange, unit, placeholder = '—' }) => (
+  <div className="flex flex-col gap-1">
+    <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</span>
+    <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2
+                    focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-100 transition">
+      <input
+        type="number"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+        placeholder={placeholder}
+        className="w-full min-w-0 text-sm text-gray-800 outline-none bg-transparent"
+      />
+      {unit && <span className="text-xs text-gray-400 flex-shrink-0">{unit}</span>}
+    </div>
+  </div>
+);
+
+const SectionHeader = ({ icon: Icon, colorClass, title, hint }) => (
+  <div className={`flex items-center justify-between px-4 py-2.5 border-b ${colorClass}`}>
+    <div className="flex items-center gap-2">
+      <Icon size={14} />
+      <span className="text-sm font-semibold">{title}</span>
+    </div>
+    {hint && <span className="text-[10px] text-gray-400">{hint}</span>}
+  </div>
+);
+
 /* ════════════════════════════════════════════════════════════════════════════
-   MAIN
+   MAIN COMPONENT
    ════════════════════════════════════════════════════════════════════════════ */
 const ThresholdProfileModal = ({
   modal,
@@ -62,30 +63,32 @@ const ThresholdProfileModal = ({
   if (!modal) return null;
   const { type, profile } = modal;
 
-  /* state mirrors backend flat fields (same as HiveThreshold) */
+  /* ── local state — one field per HiveThreshold column ── */
   const [name,           setName]           = useState('');
   const [tempAttention,  setTempAttention]  = useState(null);
   const [tempUrgente,    setTempUrgente]    = useState(null);
   const [humAttention,   setHumAttention]   = useState(null);
   const [humUrgente,     setHumUrgente]     = useState(null);
-  const [soundLevel,     setSoundLevel]     = useState(null);
   const [batteryV,       setBatteryV]       = useState(null);
+  const [soundLevel,     setSoundLevel]     = useState(null);
   const [weightDropKg,   setWeightDropKg]   = useState(null);
 
   useEffect(() => {
     if (type === 'edit' && profile) {
       setName(profile.name ?? '');
       setTempAttention(profile.temp_attention ?? null);
-      setTempUrgente(profile.temp_urgente     ?? null);
-      setHumAttention(profile.hum_attention   ?? null);
-      setHumUrgente(profile.hum_urgente       ?? null);
-      setSoundLevel(profile.sound_level       ?? null);
-      setBatteryV(profile.battery_v           ?? null);
-      setWeightDropKg(profile.weight_drop_kg  ?? null);
+      setTempUrgente(profile.temp_urgente ?? null);
+      setHumAttention(profile.hum_attention ?? null);
+      setHumUrgente(profile.hum_urgente ?? null);
+      setBatteryV(profile.battery_v ?? null);
+      setSoundLevel(profile.sound_level ?? null);
+      setWeightDropKg(profile.weight_drop_kg ?? null);
     } else {
-      setName(''); setTempAttention(null); setTempUrgente(null);
-      setHumAttention(null); setHumUrgente(null);
-      setSoundLevel(null); setBatteryV(null); setWeightDropKg(null);
+      setName('');
+      setTempAttention(null); setTempUrgente(null);
+      setHumAttention(null);  setHumUrgente(null);
+      setBatteryV(null);      setSoundLevel(null);
+      setWeightDropKg(null);
     }
   }, [type, profile]);
 
@@ -95,8 +98,8 @@ const ThresholdProfileModal = ({
     temp_urgente   : tempUrgente,
     hum_attention  : humAttention,
     hum_urgente    : humUrgente,
-    sound_level    : soundLevel,
     battery_v      : batteryV,
+    sound_level    : soundLevel,
     weight_drop_kg : weightDropKg,
   });
 
@@ -112,21 +115,20 @@ const ThresholdProfileModal = ({
             <span className="p-2 rounded-xl bg-red-100"><Trash2 size={16} className="text-red-500" /></span>
             <div>
               <h2 className="font-semibold text-gray-800">Supprimer le profil</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Les ruches assignées reviendront aux seuils globaux</p>
+              <p className="text-xs text-gray-500 mt-0.5">Les ruches concernées reviendront aux seuils globaux</p>
             </div>
           </div>
         </div>
         <div className="px-6 py-5">
           <p className="text-sm text-gray-600">
-            Voulez-vous vraiment supprimer le profil{' '}
+            Voulez-vous vraiment supprimer{' '}
             <span className="font-semibold text-gray-800">«&nbsp;{profile.name}&nbsp;»</span> ?
-            Cette action est irréversible.
+            Les ruches assignées à ce profil conserveront leurs seuils actuels mais ne seront
+            plus liées à un profil.
           </p>
         </div>
         <div className="px-6 pb-6 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition">
-            Annuler
-          </button>
+          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition">Annuler</button>
           <button
             onClick={() => onDelete(profile.id)}
             disabled={deleting}
@@ -141,13 +143,12 @@ const ThresholdProfileModal = ({
 
   /* ── CREATE / EDIT ──────────────────────────────────────────────────────── */
   const isEdit    = type === 'edit';
-  const isBusy    = isEdit ? updating : creating;
-  const submitLabel = isEdit ? (isBusy ? 'Enregistrement…' : 'Enregistrer') : (isBusy ? 'Ajout…' : 'Ajouter');
+  const isPending = isEdit ? updating : creating;
 
   return (
     <Backdrop onClose={onClose}>
-      <div className="relative w-[560px] max-w-full rounded-2xl bg-white shadow-2xl overflow-hidden
-                      max-h-[90vh] flex flex-col">
+      <div className="relative w-[560px] max-w-full rounded-2xl bg-white shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-amber-100 bg-amber-50 flex-shrink-0">
           <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:bg-gray-100 transition">
@@ -158,90 +159,101 @@ const ThresholdProfileModal = ({
               {isEdit ? <Pencil size={16} className="text-amber-600" /> : <Plus size={16} className="text-amber-600" />}
             </span>
             <div>
-              <h2 className="font-semibold text-gray-800 text-base">
+              <h2 className="font-semibold text-gray-800">
                 {isEdit ? 'Modifier le profil' : 'Ajouter un nouveau paramètre'}
               </h2>
-              <p className="text-xs text-gray-400 mt-0.5">
-                NULL = hérite du seuil global par défaut
+              <p className="text-xs text-gray-500 mt-0.5">
+                Les champs vides conservent les valeurs globales par défaut
               </p>
             </div>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-5 flex flex-col gap-4 overflow-y-auto">
+        {/* Scrollable body */}
+        <div className="px-6 py-5 flex flex-col gap-5 overflow-y-auto">
+
           {/* Name */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Nom de paramètre / ID
+              Nom du profil / ID
             </label>
             <input
               className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm
                          text-gray-800 placeholder:text-gray-400 outline-none
                          focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition"
-              placeholder="Ex : P-01, Profil Été, Zone montagneuse…"
+              placeholder="Ex : Profil Été, Ruche de production, Zone montagneuse…"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
 
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide -mb-2">Seuils d'alerte</p>
-
-          {/* Temperature */}
-          <MetricSection
-            icon={Thermometer}
-            colorClass="bg-red-50 text-red-500 border-red-100"
-            title="Température"
-            unit="°C"
-            fields={[
-              { key: 'ta', label: 'Attention (≥)',  value: tempAttention, onChange: setTempAttention },
-              { key: 'tu', label: 'Urgente (≥)',    value: tempUrgente,   onChange: setTempUrgente   },
-            ]}
-          />
-
-          {/* Humidity */}
-          <MetricSection
-            icon={Droplets}
-            colorClass="bg-blue-50 text-blue-500 border-blue-100"
-            title="Humidité"
-            unit="%"
-            fields={[
-              { key: 'ha', label: 'Attention (≥)',  value: humAttention, onChange: setHumAttention },
-              { key: 'hu', label: 'Urgente (≥)',    value: humUrgente,   onChange: setHumUrgente   },
-            ]}
-          />
-
-          {/* Sound */}
-          <MetricSection
-            icon={Volume2}
-            colorClass="bg-green-50 text-green-600 border-green-100"
-            title="Sonore"
-            unit="Hz"
-            fields={[
-              { key: 'sl', label: 'Alerte au-dessus de', value: soundLevel, onChange: setSoundLevel },
-            ]}
-          />
-
-          {/* Battery + Weight in a row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-xl border border-gray-100 overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-yellow-50 text-yellow-600 border-yellow-100">
-                <span className="text-sm">🔋</span>
-                <span className="text-sm font-semibold">Batterie</span>
-              </div>
-              <div className="px-4 py-3.5 bg-gray-50/40">
-                <NumInput label="Alerte en dessous de" unit="V" value={batteryV} onChange={setBatteryV} />
-              </div>
+          {/* ── Température ── */}
+          <div className="rounded-xl border border-gray-100 overflow-hidden">
+            <SectionHeader
+              icon={Thermometer}
+              colorClass="bg-red-50 text-red-500 border-red-100"
+              title="Température"
+              hint="Défaut : attention 35 °C · urgente 40 °C"
+            />
+            <div className="grid grid-cols-2 gap-3 px-4 py-4 bg-gray-50/40">
+              <NumInput label="Seuil Attention"  value={tempAttention} onChange={setTempAttention} unit="°C" placeholder="35" />
+              <NumInput label="Seuil Urgente"    value={tempUrgente}   onChange={setTempUrgente}   unit="°C" placeholder="40" />
             </div>
+          </div>
 
-            <div className="rounded-xl border border-gray-100 overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-purple-50 text-purple-600 border-purple-100">
-                <span className="text-sm">⚖️</span>
-                <span className="text-sm font-semibold">Poids (chute)</span>
-              </div>
-              <div className="px-4 py-3.5 bg-gray-50/40">
-                <NumInput label="Perte max / 24h" unit="kg" value={weightDropKg} onChange={setWeightDropKg} placeholder="désactivé" />
-              </div>
+          {/* ── Humidité ── */}
+          <div className="rounded-xl border border-gray-100 overflow-hidden">
+            <SectionHeader
+              icon={Droplets}
+              colorClass="bg-blue-50 text-blue-500 border-blue-100"
+              title="Humidité"
+              hint="Défaut : attention 70 % · urgente 80 %"
+            />
+            <div className="grid grid-cols-2 gap-3 px-4 py-4 bg-gray-50/40">
+              <NumInput label="Seuil Attention"  value={humAttention} onChange={setHumAttention} unit="%" placeholder="70" />
+              <NumInput label="Seuil Urgente"    value={humUrgente}   onChange={setHumUrgente}   unit="%" placeholder="80" />
+            </div>
+          </div>
+
+          {/* ── Sonore ── */}
+          <div className="rounded-xl border border-gray-100 overflow-hidden">
+            <SectionHeader
+              icon={Volume2}
+              colorClass="bg-green-50 text-green-600 border-green-100"
+              title="Sonore"
+              hint="Défaut : alerte > 80"
+            />
+            <div className="grid grid-cols-2 gap-3 px-4 py-4 bg-gray-50/40">
+              <NumInput label="Seuil Alerte"  value={soundLevel} onChange={setSoundLevel} unit="Hz" placeholder="80" />
+              <div /> {/* spacer — only one threshold for sound */}
+            </div>
+          </div>
+
+          {/* ── Batterie ── */}
+          <div className="rounded-xl border border-gray-100 overflow-hidden">
+            <SectionHeader
+              icon={BatteryLow}
+              colorClass="bg-orange-50 text-orange-500 border-orange-100"
+              title="Batterie"
+              hint="Défaut : alerte ≤ 3.5 V"
+            />
+            <div className="grid grid-cols-2 gap-3 px-4 py-4 bg-gray-50/40">
+              <NumInput label="Alerte en-dessous de"  value={batteryV} onChange={setBatteryV} unit="V" placeholder="3.5" />
+              <div />
+            </div>
+          </div>
+
+          {/* ── Poids ── */}
+          <div className="rounded-xl border border-gray-100 overflow-hidden">
+            <SectionHeader
+              icon={Weight}
+              colorClass="bg-purple-50 text-purple-500 border-purple-100"
+              title="Poids (chute sur 24 h)"
+              hint="Laisser vide = désactivé"
+            />
+            <div className="grid grid-cols-2 gap-3 px-4 py-4 bg-gray-50/40">
+              <NumInput label="Chute max autorisée"  value={weightDropKg} onChange={setWeightDropKg} unit="kg" placeholder="désactivé" />
+              <div />
             </div>
           </div>
         </div>
@@ -253,11 +265,13 @@ const ThresholdProfileModal = ({
           </button>
           <button
             onClick={() => isEdit ? onUpdate(profile.id, buildPayload()) : onCreate(buildPayload())}
-            disabled={isBusy || !name.trim()}
+            disabled={isPending || !name.trim()}
             className="px-5 py-2 rounded-xl text-sm font-semibold bg-amber-400 text-white
                        hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            {submitLabel}
+            {isEdit
+              ? (updating ? 'Enregistrement…' : 'Enregistrer')
+              : (creating ? 'Ajout…'           : 'Ajouter')}
           </button>
         </div>
       </div>
