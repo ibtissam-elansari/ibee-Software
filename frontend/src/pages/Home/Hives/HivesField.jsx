@@ -1,9 +1,9 @@
 import React from 'react';
-import { Search, List, LayoutGrid, Plus } from 'lucide-react';
+import { Search, List, LayoutGrid } from 'lucide-react';
 import { useHivesField } from './hooks/useHivesField';
-import HiveRow from './components/HiveRow';
-import HiveModal from './components/HiveModal'
-import HiveGrid from './components/HiveGrid';
+import HiveRow   from './components/HiveRow';
+import HiveModal from './components/HiveModal';
+import HiveGrid  from './components/HiveGrid';
 import { useNavigate, useParams } from 'react-router';
 
 const COLUMNS = [
@@ -24,7 +24,7 @@ const PaginationBtn = ({ onClick, disabled, active, children }) => (
     onClick={onClick}
     disabled={disabled}
     className={`
-      flex items-center justify-center rounded-xl py-1 px-2
+      flex items-center justify-center rounded-xl py-1 px-3
       border text-[13px] transition-colors
       ${active
         ? 'bg-[#F59E0B] border-[#F59E0B] text-white font-medium'
@@ -38,28 +38,22 @@ const PaginationBtn = ({ onClick, disabled, active, children }) => (
 );
 
 const HivesField = () => {
-
   const navigate = useNavigate();
   const { apiculteurId } = useParams();
 
   const {
-    paginated,      
-    filtered,      
+    paginated,
+    filtered,
     page,
     totalPages,
     setPage,
-    totalCount,
     isLoading,
     isError,
     search,        setSearch,
     filter,        setFilter,
     view,          setView,
     selectedHive,
-    openHiveModal,
     closeHiveModal,
-    addModalOpen,
-    openAddModal,
-    closeAddModal,
     lastUpdateLabel,
   } = useHivesField();
 
@@ -73,17 +67,27 @@ const HivesField = () => {
 
   return (
     <>
-      <div className="flex flex-col gap-5 p-2 pb-4 px-5 border rounded-2xl bg-white z-10">
+      <div className="flex flex-col gap-4 p-3 sm:p-4 border rounded-2xl bg-white">
 
-        {/* Heading */}
-        <h2 className="text-2xl font-bold text-gray-900 mt-1">Les ruches</h2>
+        {/* Heading + live status inline (no fixed positioning) */}
+        <div className="flex items-center justify-between gap-2 flex-wrap mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Les ruches</h2>
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+            <span className="hidden sm:inline">Surveillance en direct</span>
+            {lastUpdateLabel && (
+              <span className="text-gray-300">
+                <span className="hidden sm:inline"> • </span>
+                {lastUpdateLabel}
+              </span>
+            )}
+          </div>
+        </div>
 
         {/* Toolbar */}
-
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          {/* LEFT SIDE */}
-
-          <div className="relative flex-1 min-w-48 max-w-xs">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          {/* Search */}
+          <div className="relative flex-1 min-w-36 max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
             <input
               type="text"
@@ -95,8 +99,9 @@ const HivesField = () => {
                         focus:outline-none focus:border-gray-400 transition-colors"
             />
           </div>
-          {/* RIGHT SIDE */}
-          <div className="flex items-center gap-3 flex-wrap">
+
+          {/* View toggle + filter */}
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
               {[
                 { id: 'grid', Icon: LayoutGrid },
@@ -125,101 +130,84 @@ const HivesField = () => {
           </div>
         </div>
 
-          {/* <button
-            onClick={openAddModal}
-            className="flex items-center gap-2 h-9 px-4 rounded-lg text-white text-sm
-                       font-semibold hover:opacity-90 active:opacity-80 transition-opacity"
-            style={{ backgroundColor: '#F5A623' }}
-          >
-            <Plus className="w-4 h-4" strokeWidth={2.5} />
-            Ajouter une ruche
-          </button> */}
-
-        {/* Table */}
+        {/* Table / Grid */}
         {view === 'list' ? (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px]" style={{ borderCollapse: 'separate', borderSpacing: '0 4px' }}>
-            <thead className="border-b border-gray-200">
-              <tr>
-                {COLUMNS.map(col => (
-                  <th
-                    key={col.key}
-                    className="px-4 py-2.5 text-left border-b border-gray-200
-                               text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400"
-                  >
-                    {col.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-gray-100">
+          <div className="overflow-x-auto -mx-3 sm:-mx-4">
+            <div className="min-w-[700px] px-3 sm:px-4">
+              <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: '0 4px' }}>
+                <thead className="border-b border-gray-200">
+                  <tr>
                     {COLUMNS.map(col => (
-                      <td key={col.key} className="px-4 py-4">
-                        <div className="h-4 w-16 bg-gray-100 rounded animate-pulse" />
-                      </td>
+                      <th
+                        key={col.key}
+                        className="px-4 py-2.5 text-left border-b border-gray-200
+                                   text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400"
+                      >
+                        {col.label}
+                      </th>
                     ))}
                   </tr>
-                ))
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={COLUMNS.length} className="px-4 py-12 text-center text-sm text-gray-400">
-                    {search
-                      ? `Aucune ruche trouvée pour "${search}"`
-                      : filter !== 'Toutes'
-                        ? `Aucune ruche en état "${filter}" pour le moment.`
-                        : 'Aucune ruche enregistrée.'}
-                  </td>
-                </tr>
-              ) : (
-                paginated.map(hive => (
-                  <HiveRow key={hive.id} hive={hive} latest={hive._latest} onClick={() => navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`)} />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div> ) : (
-          <HiveGrid hives={paginated} onHiveClick={(hive) => navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`)} />
-        )}
-        
-        {totalPages > 1 && (
-          <div className="w-full my-2">
-
-            {/* Buttons */}
-            <div className="flex justify-between gap-1 px-6">
-
-              <PaginationBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                précédent
-              </PaginationBtn>
-
-              <p className='text-xs font-light'>page {page} of {totalPages}</p>
-
-              <PaginationBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-                suivant
-              </PaginationBtn>
-
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} className="border-b border-gray-100">
+                        {COLUMNS.map(col => (
+                          <td key={col.key} className="px-4 py-4">
+                            <div className="h-4 w-16 bg-gray-100 rounded animate-pulse" />
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={COLUMNS.length} className="px-4 py-12 text-center text-sm text-gray-400">
+                        {search
+                          ? `Aucune ruche trouvée pour "${search}"`
+                          : filter !== 'Toutes'
+                            ? `Aucune ruche en état "${filter}" pour le moment.`
+                            : 'Aucune ruche enregistrée.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    paginated.map(hive => (
+                      <HiveRow
+                        key={hive.id}
+                        hive={hive}
+                        latest={hive._latest}
+                        onClick={() => navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`)}
+                      />
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
+        ) : (
+          <HiveGrid
+            hives={paginated}
+            onHiveClick={(hive) => navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`)}
+          />
         )}
 
-        {/* Status bar */}
-        <div className="flex items-center gap-2 text-base text-gray-400 fixed bottom-8">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
-          <span>
-            Surveillance en direct
-            {lastUpdateLabel ? ` • Dernière mise à jour : ${lastUpdateLabel}` : ''}
-          </span>
-        </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <PaginationBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+              précédent
+            </PaginationBtn>
+            <p className="text-xs text-gray-400">page {page} / {totalPages}</p>
+            <PaginationBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+              suivant
+            </PaginationBtn>
+          </div>
+        )}
       </div>
 
       {/* Modals */}
       {selectedHive && (
         <HiveModal hive={selectedHive} onClose={closeHiveModal} />
       )}
-      {/* <HiveModal open={addModalOpen} onClose={closeAddModal} /> */}
     </>
   );
 };
