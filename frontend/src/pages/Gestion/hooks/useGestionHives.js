@@ -11,15 +11,16 @@ import { createHive, updateHive, deleteHive } from '../../../api/hives';
 
 export function useGestionHives(apiculteurId) {
   const qc = useQueryClient();
-
+  const FIFTEEN_MIN = 15 * 60 * 1000
+  
   // ── Fetch hives scoped to this apiculteur ─────────────────────────────────
-  const { data: hives = [], isLoading } = useQuery({
-    queryKey    : ['apiculteur-hives', apiculteurId],
-    queryFn     : () => getApiculteurHives(apiculteurId),
-    enabled     : !!apiculteurId,
-    staleTime   : 15_000,
-    refetchInterval: 60_000,
-  });
+  const { data: hives = [], isLoading, isError } = useQuery({
+    queryKey       : ['apiculteur-hives', apiculteurId],
+    queryFn        : () => getApiculteurHives(apiculteurId),
+    enabled        : !!apiculteurId,
+    staleTime      : FIFTEEN_MIN,
+    refetchInterval: FIFTEEN_MIN,
+  })
 
   // ── Modal state ───────────────────────────────────────────────────────────
   // modal: null | { type: 'create' } | { type: 'settings', hive } | { type: 'delete', hive }
