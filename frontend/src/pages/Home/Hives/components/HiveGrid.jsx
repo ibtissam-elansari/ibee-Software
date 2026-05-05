@@ -1,5 +1,4 @@
 import React from 'react'
-import { BarChart2 } from 'lucide-react'
 import { useHiveLatest } from '../../../../hooks/useHives'
 import BatteryCell  from './BatteryCell'
 import SignalCell   from './SignalCell'
@@ -18,18 +17,17 @@ const CARD_BORDER = {
 }
 
 const Stat = ({ label, value, alert = false, loading = false }) => (
-  <div>
-    <p className="text-[10px] font-semibold tracking-widest text-gray-400 mb-0.5">{label}</p>
+  <div className="flex flex-col min-w-0">
+    <p className="text-[9px] font-semibold tracking-widest text-gray-400 mb-0.5 truncate">{label}</p>
     {loading
       ? <div className="h-5 w-12 bg-gray-100 rounded animate-pulse mt-1" />
-      : <p className={`text-lg font-semibold ${alert ? 'text-red-500' : 'text-gray-800'}`}>
+      : <p className={`text-base font-semibold truncate ${alert ? 'text-red-500' : 'text-gray-800'}`}>
           {value ?? '—'}
         </p>
     }
   </div>
 )
 
-// Each card is its own component so useHiveLatest is called per hive
 const HiveCard = ({ hive, onHiveClick }) => {
   const { data: latest, isLoading } = useHiveLatest(hive.id)
 
@@ -39,13 +37,12 @@ const HiveCard = ({ hive, onHiveClick }) => {
   const doorOpen = latest?.door_open     ?? null
   const rssi     = latest?.rssi          ?? null
   const battV    = latest?.battery_v     ?? null
-  const weight    = latest?.weight_kg     ?? null
+  const weight   = latest?.weight_kg     ?? null
 
   const battPct = battV != null
     ? Math.min(100, Math.max(0, Math.round(((battV - 3.3) / 0.9) * 100)))
     : null
 
-  // Derive status from actual sensor data
   const status =
     temp > 40 || humidity > 80 || doorOpen === true ? 'Urgente'   :
     temp > 35 || humidity > 70                       ? 'Attention' :
@@ -57,23 +54,21 @@ const HiveCard = ({ hive, onHiveClick }) => {
   return (
     <div
       onClick={() => onHiveClick(hive)}
-      className={`rounded-xl border p-4 cursor-pointer
+      className={`rounded-xl border p-3 cursor-pointer
         hover:shadow-md transition-all duration-200 ${card}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-sm font-bold text-gray-800 tracking-wide">
+      <div className="flex items-center justify-between mb-3 gap-1 min-w-0">
+        <span className="text-xs font-bold text-gray-800 tracking-wide truncate">
           {hive.name?.toUpperCase()}
         </span>
-        <div className="flex items-center gap-2">
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${style.className}`}>
-            {style.label}
-          </span>
-        </div>
+        <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${style.className}`}>
+          {style.label}
+        </span>
       </div>
 
-      {/* Stats grid */}
-      <div className="flex flex-row justify-around mb-4">
+      {/* Stats — 2×2 grid so values never run together */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-3">
         <Stat
           label="TEMP"
           value={temp != null ? `${temp.toFixed(1)}°C` : null}
@@ -86,9 +81,6 @@ const HiveCard = ({ hive, onHiveClick }) => {
           alert={humidity > 80}
           loading={isLoading}
         />
-      </div>
-
-      <div className="flex flex-row justify-around mb-4">
         <Stat
           label="SONORE"
           value={sound != null ? `${sound * 2}Hz` : null}
@@ -97,17 +89,17 @@ const HiveCard = ({ hive, onHiveClick }) => {
         />
         <Stat
           label="POIDS"
-          value={weight != null ? `${weight.toFixed(1)}Kg` : null}
+          value={weight != null ? `${weight.toFixed(1)}kg` : null}
           alert={weight < 10}
           loading={isLoading}
         />
       </div>
 
-      {/* Footer row — battery pill + signal + security */}
+      {/* Footer row */}
       {!isLoading && (
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <BatteryCell value={battPct} />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <SignalCell rssi={rssi} urgent={status === 'Urgente'} />
             <SecurityCell doorOpen={doorOpen} />
           </div>
@@ -118,7 +110,7 @@ const HiveCard = ({ hive, onHiveClick }) => {
 }
 
 const HiveGrid = ({ hives, onHiveClick }) => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
     {hives.map(hive => (
       <HiveCard key={hive.id} hive={hive} onHiveClick={onHiveClick} />
     ))}
