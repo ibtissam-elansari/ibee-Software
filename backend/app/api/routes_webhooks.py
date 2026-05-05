@@ -14,6 +14,12 @@ from app.models.models import Device, Measurement, Hive
 
 router = APIRouter()
 
+# ── Fallback apiculteur for auto-created hives ────────────────────────────────
+# When a device sends its first uplink and has no hive assigned yet,
+# the hive is auto-created and linked to this apiculteur.
+# Change this to whichever apiculteur_id is your default in production.
+DEFAULT_APICULTEUR_ID = 1
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -46,7 +52,7 @@ async def chirpstack_uplink(
 
     Fields extracted from payload["object"]:
       temperature_c, humidity_pct, sound_level, door_open,
-      weight_kg (NEW), gps_lat, gps_lng, battery_v
+      weight_kg, gps_lat, gps_lng, battery_v
 
     After persisting, updates the SSE cache for connected dashboard clients.
     """
@@ -61,13 +67,15 @@ async def chirpstack_uplink(
     # ── Get or create device ─────────────────────────────────────────────────
     device = await _get_or_create_device(session, dev_eui)
 
-    # ── Auto-create placeholder hive if device is unlinked ───────────────────
+    # ── Auto-create hive if device is unlinked ───────────────────────────────
+    # Assigns to DEFAULT_APICULTEUR_ID so the hive is immediately visible
+    # in the dashboard. A superuser can reassign it later.
     if device.hive_id is None:
         hive = Hive(
-            name          = f"Ruche-{device.dev_eui[-4:]}",
-            location_name = "Auto-created — assign to an apiculteur",
-            apiculteur_id = None,
-            deleted_at    = _utcnow(),   # soft-deleted until a superuser assigns it
+            name          = f"Ruche-{device.dev_eui[-4:].upper()}",
+            location_name = "Auto-créée — à réassigner si nécessaire",
+            apiculteur_id = DEFAULT_APICULTEUR_ID,
+            is_active     = True,
         )
         session.add(hive)
         await session.commit()
@@ -78,7 +86,8 @@ async def chirpstack_uplink(
         await session.commit()
         await session.refresh(device)
 
-        print(f"⚠️  Device {device.dev_eui} → unlinked placeholder hive {hive.id} (needs apiculteur assignment)")
+        print(f"✅  Device {device.dev_eui} → new hive '{hive.name}' (id={hive.id}) "
+              f"assigned to apiculteur {DEFAULT_APICULTEUR_ID}")
 
     # ── Update device heartbeat ──────────────────────────────────────────────
     device.status       = "online"
@@ -120,7 +129,7 @@ async def chirpstack_uplink(
                 "humidity_pct"  : p.humidity_pct,
                 "sound_level"   : p.sound_level,
                 "door_open"     : p.door_open,
-                "weight_kg"     : getattr(p, "weight_kg", None),   # NEW — graceful if codec omits it
+                "weight_kg"     : getattr(p, "weight_kg", None),
                 "gps_lat"       : p.gps_lat,
                 "gps_lng"       : p.gps_lng,
                 "battery_v"     : p.battery_v,
@@ -130,10 +139,9 @@ async def chirpstack_uplink(
 
     # ── Resolve apiculteur_id from hive ──────────────────────────────────────
     apiculteur_id: Optional[int] = None
-    if device.hive_id is not None:
-        hive = await session.get(Hive, device.hive_id)
-        if hive:
-            apiculteur_id = hive.apiculteur_id
+    hive = await session.get(Hive, device.hive_id)
+    if hive:
+        apiculteur_id = hive.apiculteur_id
 
     # ── Persist measurement ──────────────────────────────────────────────────
     m = Measurement(
@@ -144,7 +152,7 @@ async def chirpstack_uplink(
         humidity_pct  = decoded.get("humidity_pct"),
         sound_level   = decoded.get("sound_level"),
         door_open     = decoded.get("door_open"),
-        weight_kg     = decoded.get("weight_kg"),     # NEW
+        weight_kg     = decoded.get("weight_kg"),
         gps_lat       = decoded.get("gps_lat"),
         gps_lng       = decoded.get("gps_lng"),
         battery_v     = decoded.get("battery_v"),
@@ -156,23 +164,22 @@ async def chirpstack_uplink(
     await session.refresh(m)
 
     # ── Push to SSE stream ───────────────────────────────────────────────────
-    if device.hive_id is not None:
-        sse_payload = {
-            "id"            : m.id,
-            "ts"            : m.ts.isoformat(),
-            "device_dev_eui": device.dev_eui,
-            "temperature_c" : m.temperature_c,
-            "humidity_pct"  : m.humidity_pct,
-            "sound_level"   : m.sound_level,
-            "door_open"     : m.door_open,
-            "weight_kg"     : m.weight_kg,            # NEW
-            "gps_lat"       : m.gps_lat,
-            "gps_lng"       : m.gps_lng,
-            "battery_v"     : m.battery_v,
-            "rssi"          : m.rssi,
-            "snr"           : m.snr,
-        }
-        update_sse_cache(device.hive_id, sse_payload)
+    sse_payload = {
+        "id"            : m.id,
+        "ts"            : m.ts.isoformat(),
+        "device_dev_eui": device.dev_eui,
+        "temperature_c" : m.temperature_c,
+        "humidity_pct"  : m.humidity_pct,
+        "sound_level"   : m.sound_level,
+        "door_open"     : m.door_open,
+        "weight_kg"     : m.weight_kg,
+        "gps_lat"       : m.gps_lat,
+        "gps_lng"       : m.gps_lng,
+        "battery_v"     : m.battery_v,
+        "rssi"          : m.rssi,
+        "snr"           : m.snr,
+    }
+    update_sse_cache(device.hive_id, sse_payload)
 
     return {
         "ok"             : True,
