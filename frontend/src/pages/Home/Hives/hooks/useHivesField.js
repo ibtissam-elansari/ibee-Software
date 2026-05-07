@@ -1,45 +1,38 @@
 // /frontend/src/pages/Home/Hives/hooks/useHivesField.js
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { useQuery }    from '@tanstack/react-query'
-import { useParams }   from 'react-router-dom'
-import { useHiveList } from '../../../../hooks/useHives'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useQuery }      from '@tanstack/react-query'
+import { useParams }     from 'react-router-dom'
+import { useHiveList }   from '../../../../hooks/useHives'
 import { getHiveLatest } from '../../../../api/hives'
 import { measurementAlertStatus, DEFAULT_THRESHOLDS } from '../../../../hooks/useHiveThresholds'
 
 // ---------------------------------------------------------------------------
-// Compute columns from container width (mirrors HiveGrid.jsx breakpoints)
+// Page size: cols × rows, purely from window width.
+// Matches HiveGrid breakpoints exactly:
+//   default : 1 col  (< 640)
+//   sm      : 2 cols (≥ 640)
+//   lg      : 3 cols (≥ 1024)
+//   xl      : 4 cols (≥ 1280)
+//
+// For list view we just pick a sensible flat number by width.
 // ---------------------------------------------------------------------------
-function getCols(containerWidth) {
-  if (containerWidth >= 1280) return 4
-  if (containerWidth >= 1024) return 3
-  if (containerWidth >= 640)  return 2
-  return 1
-}
-
-// ---------------------------------------------------------------------------
-// Compute rows that fit in the available height.
-// ---------------------------------------------------------------------------
-const CARD_HEIGHT   = 190  // px — approximate rendered grid card height
-const ROW_HEIGHT    = 57   // px — approximate list row height
-const GAP           = 12   // gap-3
-const MIN_ROWS      = 2
-const MIN_ROWS_LIST = 4
-
-function getPageSize(view, containerWidth, containerHeight) {
-  const cols = getCols(containerWidth)
+function getPageSize(view) {
+  const w = window.innerWidth
 
   if (view === 'list') {
-    const rows = Math.max(MIN_ROWS_LIST, Math.floor(containerHeight / (ROW_HEIGHT + GAP)))
-    return rows
+    if (w >= 1280) return 12
+    if (w >= 1024) return 10
+    if (w >= 640)  return 8
+    return 6
   }
 
-  // Grid: how many complete rows fit in the available height?
-  const rows = Math.max(MIN_ROWS, Math.floor(containerHeight / (CARD_HEIGHT + GAP)))
-  return cols * rows
+  // Grid: cols × how many rows look good without huge empty space
+  if (w >= 1280) return 8   // 4 cols × 2 rows
+  if (w >= 1024) return 6   // 3 cols × 2 rows
+  if (w >= 640)  return 6   // 2 cols × 3 rows
+  return 4                  // 1 col  × 4 rows
 }
 
-// ---------------------------------------------------------------------------
-// Fetch all hives + bulk-fetch latest readings
 // ---------------------------------------------------------------------------
 function useAllHivesWithLatest(apiculteurId) {
   const { data: hives = [], isLoading, isError } = useHiveList(apiculteurId)
@@ -73,8 +66,6 @@ function getHiveStatus(latest) {
 }
 
 // ---------------------------------------------------------------------------
-// Main hook
-// ---------------------------------------------------------------------------
 export function useHivesField() {
   const { apiculteurId } = useParams()
   const { hives, isLoading, isError, lastUpdated } = useAllHivesWithLatest(apiculteurId)
@@ -83,32 +74,21 @@ export function useHivesField() {
   const [filter,       setFilter]       = useState('Toutes')
   const [view,         setView]         = useState('grid')
   const [page,         setPage]         = useState(1)
-  const [pageSize,     setPageSize]     = useState(8)
+  const [pageSize,     setPageSize]     = useState(() => getPageSize('grid'))
   const [selectedHive, setSelectedHive] = useState(null)
   const [addModalOpen, setAddModalOpen] = useState(false)
 
-  // Attach to the grid/list container div in HivesField.jsx
-  const containerRef = useRef(null)
-
   const recalculate = useCallback(() => {
-    const el = containerRef.current
-    if (!el) return
-    const { width, height } = el.getBoundingClientRect()
-    if (width === 0 || height === 0) return
-    setPageSize(getPageSize(view, width, height))
+    setPageSize(getPageSize(view))
   }, [view])
 
-  // ResizeObserver watches the container — fires on both width AND height changes
   useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
     recalculate()
-    const ro = new ResizeObserver(recalculate)
-    ro.observe(el)
-    return () => ro.disconnect()
+    window.addEventListener('resize', recalculate)
+    return () => window.removeEventListener('resize', recalculate)
   }, [recalculate])
 
-  // Reset to page 1 whenever filters, search, or computed page size changes
+  // Reset page when anything affecting the list changes
   useEffect(() => { setPage(1) }, [search, filter, pageSize])
 
   const enriched = useMemo(() =>
@@ -134,7 +114,6 @@ export function useHivesField() {
     : null
 
   return {
-    containerRef,   // ← spread onto the grid/list wrapper div in HivesField.jsx
     paginated,
     filtered,
     page         : safePage,
