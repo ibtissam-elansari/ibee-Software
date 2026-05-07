@@ -69,7 +69,7 @@ const HivesField = () => {
     <>
       <div className="flex flex-col gap-4 p-3 sm:p-4 border rounded-2xl bg-white">
 
-        {/* Heading + live status */}
+        {/* Heading + live status inline (no fixed positioning) */}
         <div className="flex items-center justify-between gap-2 flex-wrap mt-1">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Les ruches</h2>
           <div className="flex items-center gap-1.5 text-xs text-gray-400">
@@ -77,7 +77,7 @@ const HivesField = () => {
             <span className="hidden sm:inline">Surveillance en direct</span>
             {lastUpdateLabel && (
               <span className="text-gray-300">
-                <span className="hidden sm:inline"> · </span>
+                <span className="hidden sm:inline"> • </span>
                 {lastUpdateLabel}
               </span>
             )}
@@ -86,6 +86,7 @@ const HivesField = () => {
 
         {/* Toolbar */}
         <div className="flex items-center justify-between flex-wrap gap-2">
+          {/* Search */}
           <div className="relative flex-1 min-w-36 max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
             <input
@@ -98,6 +99,8 @@ const HivesField = () => {
                         focus:outline-none focus:border-gray-400 transition-colors"
             />
           </div>
+
+          {/* View toggle + filter */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white">
               {[
@@ -132,7 +135,7 @@ const HivesField = () => {
           <div className="overflow-x-auto -mx-3 sm:-mx-4">
             <div className="min-w-[700px] px-3 sm:px-4">
               <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: '0 4px' }}>
-                <thead>
+                <thead className="border-b border-gray-200">
                   <tr>
                     {COLUMNS.map(col => (
                       <th
@@ -148,7 +151,7 @@ const HivesField = () => {
                 <tbody>
                   {isLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
-                      <tr key={i}>
+                      <tr key={i} className="border-b border-gray-100">
                         {COLUMNS.map(col => (
                           <td key={col.key} className="px-4 py-4">
                             <div className="h-4 w-16 bg-gray-100 rounded animate-pulse" />
@@ -201,6 +204,7 @@ const HivesField = () => {
         )}
       </div>
 
+      {/* Modals */}
       {selectedHive && (
         <HiveModal hive={selectedHive} onClose={closeHiveModal} />
       )}
