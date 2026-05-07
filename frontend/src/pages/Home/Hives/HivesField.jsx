@@ -42,6 +42,7 @@ const HivesField = () => {
   const { apiculteurId } = useParams();
 
   const {
+    containerRef,
     paginated,
     filtered,
     page,
@@ -67,7 +68,7 @@ const HivesField = () => {
 
   return (
     <>
-      <div className="flex flex-col gap-4 p-3 sm:p-4 border rounded-2xl bg-white">
+      <div className="flex flex-col gap-4 p-3 sm:p-4 border rounded-2xl bg-white flex-1 min-h-0">
 
         {/* Heading + live status inline (no fixed positioning) */}
         <div className="flex items-center justify-between gap-2 flex-wrap mt-1">
@@ -130,65 +131,67 @@ const HivesField = () => {
           </div>
         </div>
 
-        {/* Table / Grid */}
-        {view === 'list' ? (
-          <div className="overflow-x-auto -mx-3 sm:-mx-4">
-            <div className="min-w-[700px] px-3 sm:px-4">
-              <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: '0 4px' }}>
-                <thead className="border-b border-gray-200">
-                  <tr>
-                    {COLUMNS.map(col => (
-                      <th
-                        key={col.key}
-                        className="px-4 py-2.5 text-left border-b border-gray-200
-                                   text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400"
-                      >
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <tr key={i} className="border-b border-gray-100">
-                        {COLUMNS.map(col => (
-                          <td key={col.key} className="px-4 py-4">
-                            <div className="h-4 w-16 bg-gray-100 rounded animate-pulse" />
-                          </td>
-                        ))}
-                      </tr>
-                    ))
-                  ) : filtered.length === 0 ? (
+        {/* Table / Grid — containerRef measures this area for dynamic page size */}
+        <div ref={containerRef} className="flex-1 min-h-0">
+          {view === 'list' ? (
+            <div className="overflow-x-auto -mx-3 sm:-mx-4 h-full">
+              <div className="min-w-[700px] px-3 sm:px-4">
+                <table className="w-full" style={{ borderCollapse: 'separate', borderSpacing: '0 4px' }}>
+                  <thead className="border-b border-gray-200">
                     <tr>
-                      <td colSpan={COLUMNS.length} className="px-4 py-12 text-center text-sm text-gray-400">
-                        {search
-                          ? `Aucune ruche trouvée pour "${search}"`
-                          : filter !== 'Toutes'
-                            ? `Aucune ruche en état "${filter}" pour le moment.`
-                            : 'Aucune ruche enregistrée.'}
-                      </td>
+                      {COLUMNS.map(col => (
+                        <th
+                          key={col.key}
+                          className="px-4 py-2.5 text-left border-b border-gray-200
+                                     text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400"
+                        >
+                          {col.label}
+                        </th>
+                      ))}
                     </tr>
-                  ) : (
-                    paginated.map(hive => (
-                      <HiveRow
-                        key={hive.id}
-                        hive={hive}
-                        latest={hive._latest}
-                        onClick={() => navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`)}
-                      />
-                    ))
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <tr key={i} className="border-b border-gray-100">
+                          {COLUMNS.map(col => (
+                            <td key={col.key} className="px-4 py-4">
+                              <div className="h-4 w-16 bg-gray-100 rounded animate-pulse" />
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    ) : filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={COLUMNS.length} className="px-4 py-12 text-center text-sm text-gray-400">
+                          {search
+                            ? `Aucune ruche trouvée pour "${search}"`
+                            : filter !== 'Toutes'
+                              ? `Aucune ruche en état "${filter}" pour le moment.`
+                              : 'Aucune ruche enregistrée.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      paginated.map(hive => (
+                        <HiveRow
+                          key={hive.id}
+                          hive={hive}
+                          latest={hive._latest}
+                          onClick={() => navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`)}
+                        />
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        ) : (
-          <HiveGrid
-            hives={paginated}
-            onHiveClick={(hive) => navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`)}
-          />
-        )}
+          ) : (
+            <HiveGrid
+              hives={paginated}
+              onHiveClick={(hive) => navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`)}
+            />
+          )}
+        </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
