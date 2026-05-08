@@ -1,11 +1,3 @@
-// src/pages/Gestion/components/ThresholdProfileModal.jsx
-//
-// Fields mirror the HiveThreshold model exactly:
-//   temp_attention, temp_urgente, hum_attention, hum_urgente,
-//   battery_v, sound_level, weight_drop_kg
-//
-// All fields are optional — NULL means "keep the global default for this metric".
-
 import { useEffect, useState } from 'react';
 import { X, Plus, Pencil, Trash2, Thermometer, Droplets, Volume2, BatteryLow, Weight } from 'lucide-react';
 
