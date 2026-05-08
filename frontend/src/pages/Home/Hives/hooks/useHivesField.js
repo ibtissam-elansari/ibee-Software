@@ -21,6 +21,7 @@ function getPageSize(view) {
   //   sm(640) : 2 cols →  show 3  rows → 6
   //   lg(1024): 3 cols →  show 2  rows → 6
   //   xl(1280): 4 cols →  show 2  rows → 8
+  if (w >= 1690) return 12
   if (w >= 1280) return 8   // 4 cols × 2 rows
   if (w >= 1024) return 6   // 3 cols × 2 rows
   if (w >= 640)  return 6   // 2 cols × 3 rows
