@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Plus, Search, Pencil, Trash2,
-  CheckCircle2, ChevronRight, AlertTriangle,
+  CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { useGestionHives }      from './hooks/useGestionHives';
 import { useThresholdProfiles } from './hooks/useThresholdProfiles';
@@ -14,7 +14,7 @@ import ThresholdProfileModal    from './components/ThresholdProfileModal';
 const Tab = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className={`px-5 py-2 rounded-xl text-sm font-medium transition
+    className={`px-4 sm:px-5 py-2 rounded-xl text-sm font-medium transition
       ${active ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100'}`}
   >
     {children}
@@ -29,7 +29,7 @@ const SkeletonRow = () => (
   <div className="h-16 border-b border-gray-50 animate-pulse bg-gray-50/60" />
 );
 
-/* ── Bee SVG (shared with HiveCard) ─────────────────────────────────────── */
+/* ── Bee SVG ─────────────────────────────────────────────────────────────── */
 const BeeSVG = () => (
   <svg height="56px" width="56px" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
     <g>
@@ -50,10 +50,10 @@ const BeeSVG = () => (
    TAB 1 — PROFILES LIST
    ════════════════════════════════════════════════════════════════════════════ */
 const ProfilesTab = ({ profiles, isLoading, onAdd, onEdit, onDelete, search, setSearch }) => (
-  <div className="flex flex-col gap-5">
+  <div className="flex flex-col gap-4 sm:gap-5">
     {/* Toolbar */}
-    <div className="flex items-center gap-4 flex-wrap">
-      <div className="relative flex-1 min-w-48 max-w-xs  bg-white">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-wrap">
+      <div className="relative w-full sm:flex-1 sm:min-w-48 sm:max-w-xs bg-white">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
         <input
           value={search}
@@ -63,83 +63,83 @@ const ProfilesTab = ({ profiles, isLoading, onAdd, onEdit, onDelete, search, set
                      placeholder:text-gray-300 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition"
         />
       </div>
-      <span className="text-xs text-gray-400">Les paramètres Enregistrer : {profiles.length}</span>
-      <button
-        onClick={onAdd}
-        className="ml-auto flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-400 text-white
-                   text-sm font-semibold hover:bg-amber-500 transition"
-      >
-        <Plus size={15} />
-        Ajouter un paramètre
-      </button>
+
+      <div className="flex items-center justify-between sm:justify-start gap-3">
+        <span className="text-xs text-gray-400">
+          {profiles.length} paramètre{profiles.length !== 1 ? 's' : ''}
+        </span>
+        <button
+          onClick={onAdd}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-400 text-white
+                     text-sm font-semibold hover:bg-amber-500 transition sm:ml-auto"
+        >
+          <Plus size={15} />
+          <span className="whitespace-nowrap">Ajouter un paramètre</span>
+        </button>
+      </div>
     </div>
 
-    {/* Table */}
-    <div className="rounded-2xl border border-gray-100 overflow-hidden  bg-white">
-      <div className="grid grid-cols-[200px_1fr_1fr_1fr_72px] bg-gray-50 border-b border-gray-100 px-5 py-3">
-        {['Ruches ID', 'Température', 'Humidité', 'Sonore', ''].map((h) => (
-          <span key={h} className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</span>
-        ))}
+    {/* Table — horizontally scrollable on mobile */}
+    <div className="rounded-2xl border border-gray-100 overflow-hidden bg-white">
+      <div className="overflow-x-auto">
+        <div className="min-w-[540px]">
+          {/* Header */}
+          <div className="grid grid-cols-[180px_1fr_1fr_1fr_64px] bg-gray-50 border-b border-gray-100 px-4 sm:px-5 py-3">
+            {['Ruches ID', 'Température', 'Humidité', 'Sonore', ''].map((h) => (
+              <span key={h} className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</span>
+            ))}
+          </div>
+
+          {/* Rows */}
+          {isLoading
+            ? Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} />)
+            : profiles.length === 0
+              ? (
+                <div className="py-16 flex flex-col items-center gap-2 text-gray-400">
+                  <AlertTriangle size={24} className="text-gray-200" />
+                  <p className="text-sm text-center px-4">Aucun profil. Cliquez sur « Ajouter un paramètre ».</p>
+                </div>
+              )
+              : profiles.map((p) => (
+                  <div
+                    key={p.id}
+                    className="grid grid-cols-[180px_1fr_1fr_1fr_64px] items-center px-4 sm:px-5 py-4
+                               border-b border-gray-50 hover:bg-gray-50/60 transition group"
+                  >
+                    <div>
+                      <p className="text-sm font-bold text-gray-800 truncate">{p.name}</p>
+                      {p.created_at && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {new Date(p.created_at).toLocaleDateString('fr-FR')}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-0.5 text-xs text-gray-600">
+                      <span>Att: {val(p.temp_attention, '°C')}  Urg: {val(p.temp_urgente, '°C')}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 text-xs text-gray-600">
+                      <span>Att: {val(p.hum_attention, '%')}  Urg: {val(p.hum_urgente, '%')}</span>
+                    </div>
+                    <div className="text-xs text-gray-600">{val(p.sound_level, 'Hz')}</div>
+                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        onClick={() => onEdit(p)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => onDelete(p)}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+          }
+        </div>
       </div>
-
-      {isLoading
-        ? Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} />)
-        : profiles.length === 0
-          ? (
-            <div className="py-16 flex flex-col items-center gap-2 text-gray-400">
-              <AlertTriangle size={24} className="text-gray-200" />
-              <p className="text-sm">Aucun profil. Cliquez sur « Ajouter un paramètre ».</p>
-            </div>
-          )
-          : profiles.map((p) => (
-              <div
-                key={p.id}
-                className="grid grid-cols-[200px_1fr_1fr_1fr_72px] items-center px-5 py-4
-                           border-b border-gray-50 hover:bg-gray-50/60 transition group"
-              >
-                {/* Name + date */}
-                <div>
-                  <p className="text-sm font-bold text-gray-800">{p.name}</p>
-                  {p.created_at && (
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(p.created_at).toLocaleDateString('fr-FR')}
-                    </p>
-                  )}
-                </div>
-
-                {/* Temp */}
-                <div className="flex flex-col gap-0.5 text-xs text-gray-600">
-                  <span>Att: {val(p.temp_attention, '°C')}  Urg: {val(p.temp_urgente, '°C')}</span>
-                </div>
-
-                {/* Humidity */}
-                <div className="flex flex-col gap-0.5 text-xs text-gray-600">
-                  <span>Att: {val(p.hum_attention, '%')}  Urg: {val(p.hum_urgente, '%')}</span>
-                </div>
-
-                {/* Sound */}
-                <div className="text-xs text-gray-600">
-                  {val(p.sound_level, 'Hz')}
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition">
-                  <button
-                    onClick={() => onEdit(p)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    onClick={() => onDelete(p)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))
-      }
     </div>
   </div>
 );
@@ -151,6 +151,7 @@ const HivesTab = ({ hives, hivesLoading, profiles, onAssign, onUnassign, assigni
   const [search,          setSearch]          = useState('');
   const [selectedHiveIds, setSelectedHiveIds] = useState(new Set());
   const [panelSearch,     setPanelSearch]     = useState('');
+  const [panelOpen,       setPanelOpen]       = useState(false);
 
   const filtered = useMemo(
     () => hives.filter((h) => h.name?.toLowerCase().includes(search.toLowerCase())),
@@ -175,11 +176,11 @@ const HivesTab = ({ hives, hivesLoading, profiles, onAssign, onUnassign, assigni
     setSelectedHiveIds(allSelected ? new Set() : new Set(filtered.map((h) => h.id)));
 
   return (
-    <div className="flex gap-6 ">
+    <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
       {/* ── Hive grid ──────────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0 flex flex-col gap-4">
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-xs bg-white">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-40 max-w-xs bg-white">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
             <input
               value={search}
@@ -191,16 +192,40 @@ const HivesTab = ({ hives, hivesLoading, profiles, onAssign, onUnassign, assigni
           </div>
           <button
             onClick={toggleAll}
-            className="text-sm font-medium text-amber-600 hover:text-amber-700 transition ml-auto"
+            className="text-sm font-medium text-amber-600 hover:text-amber-700 transition"
           >
             {allSelected ? 'Désélectionner tous' : 'Sélectionner tous'}
           </button>
+          {/* Mobile: toggle profile panel */}
+          <button
+            onClick={() => setPanelOpen((o) => !o)}
+            className="lg:hidden ml-auto text-sm font-medium text-gray-600 border border-gray-200 px-3 py-1.5 rounded-xl hover:bg-gray-50 transition"
+          >
+            Paramètres {panelOpen ? '▲' : '▼'}
+          </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {/* Mobile profiles panel (collapsible) */}
+        {panelOpen && (
+          <div className="lg:hidden rounded-2xl border border-gray-100 p-4 bg-white flex flex-col gap-3">
+            <ProfilesPanel
+              panelProfiles={panelProfiles}
+              panelSearch={panelSearch}
+              setPanelSearch={setPanelSearch}
+              profiles={profiles}
+              hives={hives}
+              selectedHiveIds={selectedHiveIds}
+              assigning={assigning}
+              onAssign={onAssign}
+              onUnassign={onUnassign}
+            />
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
           {hivesLoading
             ? Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-44 rounded-2xl bg-gray-100 animate-pulse" />
+                <div key={i} className="h-40 sm:h-44 rounded-2xl bg-gray-100 animate-pulse" />
               ))
             : filtered.map((hive) => {
                 const selected = selectedHiveIds.has(hive.id);
@@ -215,29 +240,22 @@ const HivesTab = ({ hives, hivesLoading, profiles, onAssign, onUnassign, assigni
                         : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                       }`}
                   >
-                    {/* Checkbox */}
                     <div className={`absolute top-2.5 left-2.5 w-5 h-5 rounded-full border-2 z-10 flex items-center justify-center transition
                       ${selected ? 'bg-amber-400 border-amber-400' : 'bg-white border-gray-300'}`}>
                       {selected && <CheckCircle2 size={13} className="text-white" strokeWidth={3} />}
                     </div>
-
-                    {/* Profile badge */}
                     {assignedProfile && (
                       <div className="absolute top-2.5 right-2.5 z-10 bg-amber-400 text-white
-                                      text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-tight">
+                                      text-[10px] font-bold px-1.5 py-0.5 rounded-md leading-tight max-w-[80px] truncate">
                         {assignedProfile.name}
                       </div>
                     )}
-
-                    {/* Bee */}
                     <div className="bg-orange-50 flex items-center justify-center pt-8 pb-3">
                       <BeeSVG />
                     </div>
                     <div className="h-1.5 bg-gray-900" />
-
-                    {/* Footer */}
                     <div className="px-3 py-2.5 flex items-center justify-between">
-                      <span className="text-sm font-semibold text-gray-800">{hive.name}</span>
+                      <span className="text-sm font-semibold text-gray-800 truncate">{hive.name}</span>
                     </div>
                   </button>
                 );
@@ -248,83 +266,100 @@ const HivesTab = ({ hives, hivesLoading, profiles, onAssign, onUnassign, assigni
         {selectedHiveIds.size > 0 && (
           <p className="text-xs text-amber-600 font-medium">
             {selectedHiveIds.size} ruche{selectedHiveIds.size > 1 ? 's' : ''} sélectionnée{selectedHiveIds.size > 1 ? 's' : ''}
-            {' '}— sélectionnez un profil à droite pour l'appliquer
+            {' '}— sélectionnez un profil {panelOpen ? 'ci-dessus' : 'à droite'} pour l'appliquer
           </p>
         )}
       </div>
 
-      {/* ── Profiles panel ─────────────────────────────────────────────── */}
-      <div className="w-[220px] flex-shrink-0 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-gray-800 text-sm">Paramètre</h3>
-          <span className="text-xs text-gray-400">Total : {profiles.length}</span>
-        </div>
-
-        <div className="relative bg-white">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
-          <input
-            value={panelSearch}
-            onChange={(e) => setPanelSearch(e.target.value)}
-            placeholder="Cherche…"
-            className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 text-sm
-                       placeholder:text-gray-300 outline-none focus:border-amber-400 transition"
-          />
-        </div>
-
-        <div className="flex flex-col gap-2 overflow-y-auto">
-          {panelProfiles.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-6">
-              Aucun profil. Créez-en un dans l'onglet Paramètre.
-            </p>
-          )}
-
-          {panelProfiles.map((profile) => {
-            const assignedCount = hives.filter((h) => h.threshold_profile_id === profile.id).length;
-            const willAssign    = selectedHiveIds.size > 0;
-
-            return (
-              <div key={profile.id} className="rounded-xl border border-gray-200 overflow-hidden">
-                {/* Profile header */}
-                <div className="px-3 py-2.5 bg-gray-50 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{profile.name}</p>
-                    {assignedCount > 0 && (
-                      <p className="text-[10px] text-gray-400 mt-0.5">
-                        {assignedCount} ruche{assignedCount > 1 ? 's' : ''}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Apply / Remove button */}
-                <button
-                  onClick={() => {
-                    if (!willAssign) return;
-                    // If all selected hives already use this profile → remove; else assign
-                    const allUseThis = [...selectedHiveIds].every(
-                      (id) => hives.find((h) => h.id === id)?.threshold_profile_id === profile.id
-                    );
-                    allUseThis
-                      ? onUnassign(profile.id, [...selectedHiveIds])
-                      : onAssign(profile.id, [...selectedHiveIds]);
-                  }}
-                  disabled={assigning || !willAssign}
-                  className={`w-full py-2 text-xs font-semibold transition
-                    ${!willAssign
-                      ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                      : 'bg-green-500 text-white hover:bg-green-600 active:bg-green-700'
-                    }`}
-                >
-                  {assigning ? '…' : !willAssign ? 'Sélectionnez des ruches' : 'Appliquer'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+      {/* ── Profiles panel (desktop only) ──────────────────────────────── */}
+      <div className="hidden lg:flex w-[220px] flex-shrink-0 flex-col gap-3">
+        <ProfilesPanel
+          panelProfiles={panelProfiles}
+          panelSearch={panelSearch}
+          setPanelSearch={setPanelSearch}
+          profiles={profiles}
+          hives={hives}
+          selectedHiveIds={selectedHiveIds}
+          assigning={assigning}
+          onAssign={onAssign}
+          onUnassign={onUnassign}
+        />
       </div>
     </div>
   );
 };
+
+/* ── Shared profiles panel content (used in both mobile & desktop) ───────── */
+const ProfilesPanel = ({
+  panelProfiles, panelSearch, setPanelSearch,
+  profiles, hives, selectedHiveIds,
+  assigning, onAssign, onUnassign,
+}) => (
+  <>
+    <div className="flex items-center justify-between">
+      <h3 className="font-semibold text-gray-800 text-sm">Paramètre</h3>
+      <span className="text-xs text-gray-400">Total : {profiles.length}</span>
+    </div>
+
+    <div className="relative bg-white">
+      <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+      <input
+        value={panelSearch}
+        onChange={(e) => setPanelSearch(e.target.value)}
+        placeholder="Cherche…"
+        className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 text-sm
+                   placeholder:text-gray-300 outline-none focus:border-amber-400 transition"
+      />
+    </div>
+
+    <div className="flex flex-col gap-2 max-h-[50vh] overflow-y-auto">
+      {panelProfiles.length === 0 && (
+        <p className="text-xs text-gray-400 text-center py-6">
+          Aucun profil. Créez-en un dans l'onglet Paramètre.
+        </p>
+      )}
+
+      {panelProfiles.map((profile) => {
+        const assignedCount = hives.filter((h) => h.threshold_profile_id === profile.id).length;
+        const willAssign    = selectedHiveIds.size > 0;
+
+        return (
+          <div key={profile.id} className="rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-3 py-2.5 bg-gray-50 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-800 truncate">{profile.name}</p>
+                {assignedCount > 0 && (
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {assignedCount} ruche{assignedCount > 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (!willAssign) return;
+                const allUseThis = [...selectedHiveIds].every(
+                  (id) => hives.find((h) => h.id === id)?.threshold_profile_id === profile.id
+                );
+                allUseThis
+                  ? onUnassign(profile.id, [...selectedHiveIds])
+                  : onAssign(profile.id, [...selectedHiveIds]);
+              }}
+              disabled={assigning || !willAssign}
+              className={`w-full py-2 text-xs font-semibold transition
+                ${!willAssign
+                  ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                  : 'bg-green-500 text-white hover:bg-green-600 active:bg-green-700'
+                }`}
+            >
+              {assigning ? '…' : !willAssign ? 'Sélectionnez des ruches' : 'Appliquer'}
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  </>
+);
 
 /* ════════════════════════════════════════════════════════════════════════════
    PAGE
@@ -356,17 +391,17 @@ const GestionParametresPage = () => {
   );
 
   return (
-    <div className="p-6 min-h-full">
+    <div className="p-4 sm:p-6 min-h-full">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Gestion des paramètres</h1>
+      <div className="mb-5 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Gestion des paramètres</h1>
         <p className="text-sm text-gray-400 mt-1">
           Personnalisation précise et contrôle global des ruches
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl w-fit mb-6">
+      <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl w-fit mb-5 sm:mb-6">
         <Tab active={activeTab === 'profiles'} onClick={() => setActiveTab('profiles')}>Paramètre</Tab>
         <Tab active={activeTab === 'hives'}    onClick={() => setActiveTab('hives')}>Ruches</Tab>
       </div>

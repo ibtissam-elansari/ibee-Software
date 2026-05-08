@@ -35,7 +35,6 @@ const GestionPage = () => {
     navigate(`/apiculteurs/${apiculteurId}/gestion/${hive.id}`);
   };
 
-  // Filter hives by name
   const filteredHives = useMemo(() => {
     return hives.filter((hive) =>
       hive.name?.toLowerCase().includes(search.toLowerCase())
@@ -45,35 +44,34 @@ const GestionPage = () => {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="p-6 min-h-full bg-white">
+    <div className="p-4 sm:p-6 min-h-full bg-white">
 
       {/* Search Bar */}
-      <div className="mb-6 mt-4 flex justify-start">
-        <div className="relative flex-1 min-w-48 max-w-xs">
+      <div className="mb-4 sm:mb-6 mt-2 sm:mt-4 flex justify-start">
+        <div className="relative w-full max-w-xs">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-
           <input
             type="text"
             placeholder="Chercher une ruche..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 pl-4 rounded-2xl border border-gray-200 bg-white
+            className="w-full h-9 pl-4 pr-9 rounded-2xl border border-gray-200 bg-white
                       text-sm text-gray-700 placeholder:text-gray-300
                       focus:outline-none focus:border-gray-400 transition-colors"
           />
         </div>
       </div>
 
-      {/* Hive Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+      {/* Hive Grid — 2 cols on mobile, 3 on sm, 4 on md, 5 on lg */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
 
-        { user?.role === 'superuser' ? (<AddHiveCard onClick={openCreate} />) : ''}
+        {user?.role === 'superuser' && <AddHiveCard onClick={openCreate} />}
 
         {isLoading
           ? Array.from({ length: 7 }).map((_, i) => (
               <div
                 key={i}
-                className="h-48 bg-gray-100 rounded-2xl animate-pulse"
+                className="h-44 sm:h-48 bg-gray-100 rounded-2xl animate-pulse"
               />
             ))
           : filteredHives.map((hive) => (
