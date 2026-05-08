@@ -1,10 +1,10 @@
 // pages/AlertStats/AlertStatsPage.jsx
-import React from 'react'
+import React, { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Bell, Filter, ChevronDown } from 'lucide-react'
+import { Bell, Filter, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react'
 import {
   ResponsiveContainer, AreaChart, Area,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts'
 import { useAlertStats, ALERT_TYPES, TYPE_COLORS, TYPE_LABELS } from '../../hooks/useAlertStats'
 import { useHiveList } from '../../hooks/useHives'
@@ -48,7 +48,7 @@ const HiveSelector = ({ hives, selectedHiveId, onChange, loading }) => (
       disabled={loading}
       className="h-8 pl-3 pr-8 border border-gray-200 rounded-lg text-xs text-gray-600
                  focus:outline-none focus:border-amber-400 bg-white cursor-pointer
-                 appearance-none disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px]"
+                 appearance-none disabled:opacity-50 disabled:cursor-not-allowed w-full min-w-[140px]"
     >
       <option value="">Toutes les ruches</option>
       {hives.map(h => (
@@ -124,7 +124,7 @@ const StackedTooltip = ({ active, payload, label }) => {
 
 // ── Custom legend ─────────────────────────────────────────────────────────────
 const StackedLegend = () => (
-  <div className="flex items-center gap-4 flex-wrap mt-3">
+  <div className="flex items-center gap-3 flex-wrap mt-3">
     {ALERT_TYPES.map(t => (
       <div key={t} className="flex items-center gap-1.5">
         <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: TYPE_COLORS[t] }} />
@@ -134,12 +134,89 @@ const StackedLegend = () => (
   </div>
 )
 
+// ── Alert log panel (shared between sidebar and mobile sheet) ─────────────────
+const AlertLog = ({ alerts, alertsLoading, totalToday, typeFilter, setTypeFilter, impFilter, setImpFilter }) => (
+  <>
+    {/* Today summary */}
+    <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
+      <span className="text-sm font-semibold text-gray-800">Aujourd'hui</span>
+      <span className="text-xs text-gray-400">{totalToday} alertes</span>
+    </div>
+
+    {/* Filters */}
+    <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 flex-shrink-0">
+      <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+        className="flex-1 h-7 px-2 border border-gray-200 rounded-lg text-[11px]
+                   text-gray-600 focus:outline-none focus:border-amber-400 bg-white">
+        <option value="">Type</option>
+        <option value="security">Sécurité</option>
+        <option value="temperature">Température</option>
+        <option value="humidity">Humidité</option>
+        <option value="battery">Batterie</option>
+        <option value="sound">Sonore</option>
+      </select>
+      <select value={impFilter} onChange={e => setImpFilter(e.target.value)}
+        className="flex-1 h-7 px-2 border border-gray-200 rounded-lg text-[11px]
+                   text-gray-600 focus:outline-none focus:border-amber-400 bg-white">
+        <option value="">Importance</option>
+        <option value="urgente">Urgente</option>
+        <option value="attention">Attention</option>
+      </select>
+      <Filter className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+    </div>
+
+    {/* Column headers */}
+    <div className="grid grid-cols-3 px-4 py-2 border-b border-gray-100
+                    text-[10px] font-semibold uppercase tracking-wider text-gray-400 flex-shrink-0">
+      <span>Date</span>
+      <span>Heure</span>
+      <span>Type</span>
+    </div>
+
+    {/* Rows */}
+    <div className="flex-1 overflow-y-auto min-h-0">
+      {alertsLoading ? (
+        <div className="p-4 flex flex-col gap-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-11 bg-gray-50 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      ) : alerts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-32 gap-2">
+          <Bell className="w-6 h-6 text-green-300" />
+          <p className="text-sm text-gray-300">Aucune alerte</p>
+        </div>
+      ) : (
+        alerts.map(alert => {
+          const isUrgent = alert.importance === 'urgente'
+          const dt = new Date(alert.ts)
+          return (
+            <div key={alert.id}
+              className={`grid grid-cols-3 items-center px-4 py-3 border-b border-gray-50
+                          transition-colors
+                          ${isUrgent ? 'bg-red-50/40 hover:bg-red-50/70' : 'bg-white hover:bg-gray-50'}`}>
+              <span className="text-[11px] text-gray-600">
+                {dt.toLocaleDateString('fr-FR')}
+              </span>
+              <span className="text-[11px] text-gray-500">
+                {dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <TypeBadge type={alert.type} />
+            </div>
+          )
+        })
+      )}
+    </div>
+  </>
+)
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 const AlertStatsPage = () => {
   const { apiculteurId } = useParams()
   const numericApiculteurId = Number(apiculteurId)
 
-  // Hive list for the selector
+  const [logOpen, setLogOpen] = useState(false)
+
   const { data: hives = [], isLoading: hivesLoading } = useHiveList(numericApiculteurId)
 
   const {
@@ -152,74 +229,110 @@ const AlertStatsPage = () => {
   } = useAlertStats(numericApiculteurId)
 
   return (
-    <div className="flex gap-5 p-6" style={{ background: '#FDFAF4', minHeight: '100%' }}>
+    <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 p-4 sm:p-6"
+         style={{ background: '#FDFAF4', minHeight: '100%' }}>
 
-      {/* ── LEFT COLUMN ── */}
-      <div className="flex-1 flex flex-col gap-5 min-w-0">
+      {/* ── LEFT / MAIN COLUMN ── */}
+      <div className="flex-1 flex flex-col gap-4 sm:gap-5 min-w-0">
 
         {/* ── Filter bar ── */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
 
-          {/* Hive selector */}
-          <HiveSelector
-            hives={hives}
-            selectedHiveId={selectedHiveId}
-            onChange={setSelectedHiveId}
-            loading={hivesLoading}
-          />
+          {/* Row 1: hive selector + range tabs */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <HiveSelector
+              hives={hives}
+              selectedHiveId={selectedHiveId}
+              onChange={setSelectedHiveId}
+              loading={hivesLoading}
+            />
+            <div className="w-px h-5 bg-gray-200 hidden sm:block" />
+            <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5">
+              {['7j', '15j', 'Mois'].map(r => (
+                <RangeTab key={r} id={r} label={r}
+                  active={range === r && !startDate && !endDate}
+                  onClick={(v) => { setRange(v); setStartDate(''); setEndDate('') }} />
+              ))}
+            </div>
+          </div>
 
-          <div className="w-px h-5 bg-gray-200" />
-
-          {/* Date range */}
-          <span className="text-xs text-gray-400 font-medium">Période :</span>
-          <div className="flex items-center gap-2">
+          {/* Row 2: date pickers */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-gray-400 font-medium hidden sm:inline">Période :</span>
             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-              className="h-8 px-3 border border-gray-200 rounded-lg text-xs text-gray-500
-                         focus:outline-none focus:border-amber-400 bg-white" />
+              className="h-8 px-2 sm:px-3 border border-gray-200 rounded-lg text-xs text-gray-500
+                         focus:outline-none focus:border-amber-400 bg-white w-full sm:w-auto" />
             <span className="text-gray-300 text-sm">→</span>
             <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-              className="h-8 px-3 border border-gray-200 rounded-lg text-xs text-gray-500
-                         focus:outline-none focus:border-amber-400 bg-white" />
+              className="h-8 px-2 sm:px-3 border border-gray-200 rounded-lg text-xs text-gray-500
+                         focus:outline-none focus:border-amber-400 bg-white w-full sm:w-auto" />
+            {(startDate || endDate) && (
+              <button onClick={() => { setStartDate(''); setEndDate('') }}
+                className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 whitespace-nowrap">
+                Réinitialiser
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5">
-            {['7j', '15j', 'Mois'].map(r => (
-              <RangeTab key={r} id={r} label={r}
-                active={range === r && !startDate && !endDate}
-                onClick={(v) => { setRange(v); setStartDate(''); setEndDate('') }} />
-            ))}
-          </div>
-          {(startDate || endDate) && (
-            <button onClick={() => { setStartDate(''); setEndDate('') }}
-              className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2">
-              Réinitialiser
-            </button>
-          )}
         </div>
 
+        {/* ── Mobile alert log toggle ── */}
+        <button
+          onClick={() => setLogOpen(o => !o)}
+          className="lg:hidden flex items-center justify-between w-full bg-white border border-gray-100
+                     rounded-2xl px-4 py-3 shadow-sm"
+        >
+          <div className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-gray-400" />
+            <span className="text-sm font-semibold text-gray-800">Historique des Alertes</span>
+            {totalToday > 0 && (
+              <span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                {totalToday}
+              </span>
+            )}
+          </div>
+          {logOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        </button>
+
+        {/* ── Mobile alert log (expanded) ── */}
+        {logOpen && (
+          <div className="lg:hidden bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col"
+               style={{ maxHeight: '60vh' }}>
+            <AlertLog
+              alerts={alerts}
+              alertsLoading={alertsLoading}
+              totalToday={totalToday}
+              typeFilter={typeFilter}
+              setTypeFilter={setTypeFilter}
+              impFilter={impFilter}
+              setImpFilter={setImpFilter}
+            />
+          </div>
+        )}
+
         {/* ── Timeline chart ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-gray-800">
               Nombre d'alertes en fonction du temps
               {selectedHiveId && (
-                <span className="ml-2 font-normal text-amber-600">
+                <span className="ml-2 font-normal text-amber-600 block sm:inline mt-0.5 sm:mt-0">
                   — {hives.find(h => h.id === selectedHiveId)?.name}
                 </span>
               )}
             </h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">
+            <p className="text-[11px] text-gray-400 mt-0.5 hidden sm:block">
               Passez la souris sur le graphique pour voir le détail par type
             </p>
           </div>
 
           {timelineLoading ? (
-            <div className="h-72 bg-gray-50 rounded-xl animate-pulse" />
+            <div className="h-52 sm:h-72 bg-gray-50 rounded-xl animate-pulse" />
           ) : timelineData.length === 0 ? (
-            <div className="h-72 flex items-center justify-center text-sm text-gray-300 bg-gray-50 rounded-xl">
+            <div className="h-52 sm:h-72 flex items-center justify-center text-sm text-gray-300 bg-gray-50 rounded-xl">
               Aucune alerte sur cette période
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={290}>
+            <ResponsiveContainer width="100%" height={typeof window !== 'undefined' && window.innerWidth < 640 ? 210 : 290}>
               <AreaChart data={timelineData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                 <defs>
                   <linearGradient id="alertGrad" x1="0" y1="0" x2="0" y2="1">
@@ -243,18 +356,19 @@ const AlertStatsPage = () => {
         </div>
 
         {/* ── Weekly stacked bar ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+          {/* Header — stacks on mobile */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div>
               <h2 className="text-sm font-semibold text-gray-800">
                 Aperçu hebdomadaire des alertes urgentes
               </h2>
-              <p className="text-[11px] text-gray-400 mt-0.5">
+              <p className="text-[11px] text-gray-400 mt-0.5 hidden sm:block">
                 Répartition par type d'alerte sur la période
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 px-3 py-1 rounded-lg">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 px-3 py-1 rounded-lg whitespace-nowrap">
                 {weekLabel}
               </span>
               <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5">
@@ -266,10 +380,10 @@ const AlertStatsPage = () => {
           </div>
 
           {weeklyLoading ? (
-            <div className="h-72 bg-gray-50 rounded-xl animate-pulse" />
+            <div className="h-52 sm:h-72 bg-gray-50 rounded-xl animate-pulse" />
           ) : (
             <>
-              <ResponsiveContainer width="100%" height={270}>
+              <ResponsiveContainer width="100%" height={typeof window !== 'undefined' && window.innerWidth < 640 ? 200 : 270}>
                 <BarChart data={weeklyData}
                   margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
                   barCategoryGap="40%">
@@ -292,84 +406,26 @@ const AlertStatsPage = () => {
         </div>
       </div>
 
-      {/* ── RIGHT COLUMN — alert log ── */}
+      {/* ── RIGHT COLUMN — desktop sticky alert log ── */}
       <div
-        className="w-80 flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col"
+        className="hidden lg:flex w-80 flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex-col"
         style={{ height: 'calc(100vh - 96px)', position: 'sticky', top: '24px' }}
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
           <h2 className="text-base font-semibold text-gray-900">Historique des Alertes</h2>
           <Bell className="w-4 h-4 text-gray-300" />
         </div>
-
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
-          <span className="text-sm font-semibold text-gray-800">Aujourd'hui</span>
-          <span className="text-xs text-gray-400">{totalToday} alertes</span>
-        </div>
-
-        {/* Type + importance filters */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 flex-shrink-0">
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-            className="flex-1 h-7 px-2 border border-gray-200 rounded-lg text-[11px]
-                       text-gray-600 focus:outline-none focus:border-amber-400 bg-white">
-            <option value="">Type</option>
-            <option value="security">Sécurité</option>
-            <option value="temperature">Température</option>
-            <option value="humidity">Humidité</option>
-            <option value="battery">Batterie</option>
-            <option value="sound">Sonore</option>
-          </select>
-          <select value={impFilter} onChange={e => setImpFilter(e.target.value)}
-            className="flex-1 h-7 px-2 border border-gray-200 rounded-lg text-[11px]
-                       text-gray-600 focus:outline-none focus:border-amber-400 bg-white">
-            <option value="">Importance</option>
-            <option value="urgente">Urgente</option>
-            <option value="attention">Attention</option>
-          </select>
-          <Filter className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
-        </div>
-
-        <div className="grid grid-cols-3 px-4 py-2 border-b border-gray-100
-                        text-[10px] font-semibold uppercase tracking-wider text-gray-400 flex-shrink-0">
-          <span>Date</span>
-          <span>Heure</span>
-          <span>Type</span>
-        </div>
-
-        <div className="flex-1 overflow-y-auto min-h-0">
-          {alertsLoading ? (
-            <div className="p-4 flex flex-col gap-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-11 bg-gray-50 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : alerts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 gap-2">
-              <Bell className="w-6 h-6 text-green-300" />
-              <p className="text-sm text-gray-300">Aucune alerte</p>
-            </div>
-          ) : (
-            alerts.map(alert => {
-              const isUrgent = alert.importance === 'urgente'
-              const dt = new Date(alert.ts)
-              return (
-                <div key={alert.id}
-                  className={`grid grid-cols-3 items-center px-4 py-3 border-b border-gray-50
-                              transition-colors
-                              ${isUrgent ? 'bg-red-50/40 hover:bg-red-50/70' : 'bg-white hover:bg-gray-50'}`}>
-                  <span className="text-[11px] text-gray-600">
-                    {dt.toLocaleDateString('fr-FR')}
-                  </span>
-                  <span className="text-[11px] text-gray-500">
-                    {dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  <TypeBadge type={alert.type} />
-                </div>
-              )
-            })
-          )}
-        </div>
+        <AlertLog
+          alerts={alerts}
+          alertsLoading={alertsLoading}
+          totalToday={totalToday}
+          typeFilter={typeFilter}
+          setTypeFilter={setTypeFilter}
+          impFilter={impFilter}
+          setImpFilter={setImpFilter}
+        />
       </div>
+
     </div>
   )
 }
