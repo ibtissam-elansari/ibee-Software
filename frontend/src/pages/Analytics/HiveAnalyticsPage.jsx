@@ -27,8 +27,8 @@ const HiveAnalyticsPage = () => {
   } = useHiveAnalytics(id)
 
   return (
-    <div className="min-h-full" style={{ background: '#FDFAF4' }}>
-      <div className="flex flex-col gap-4 p-4 lg:p-6">
+    <div className="h-full flex flex-col overflow-y-auto" style={{ background: '#FDFAF4' }}>
+      <div className="flex flex-col gap-4 p-4 lg:p-6 flex-1">
 
         {/* ── Top bar ── */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -221,9 +221,10 @@ const HiveAnalyticsPage = () => {
           </div>
         </div>
 
-        {/* ── Analyse Comparative ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 lg:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+        {/* ── Analyse Comparative — grows to fill viewport below the cards ── */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 lg:p-6 flex flex-col"
+             style={{ minHeight: 380 }}>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5 flex-shrink-0">
             <div>
               <h2 className="text-base font-bold text-gray-900">Analyse Comparative</h2>
               <p className="text-[11px] text-gray-400 mt-0.5 hidden sm:block">
@@ -256,7 +257,9 @@ const HiveAnalyticsPage = () => {
               )}
             </div>
           </div>
-          <ComparativeChart data={chartData} isLoading={isLoading} xAxisTicks={xAxisTicks} />
+          <div style={{ height: 300 }}>
+            <ComparativeChart data={chartData} isLoading={isLoading} />
+          </div>
         </div>
 
       </div>

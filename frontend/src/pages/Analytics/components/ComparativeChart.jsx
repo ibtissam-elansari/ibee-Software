@@ -5,8 +5,16 @@ import {
 } from 'recharts'
 import { METRIC_CONFIG } from '../config/metricConfig'
 
-const LEFT_LINES  = ['temperature', 'humidity', 'sound']
-const RIGHT_LINES = ['weight']
+const LEFT_LINES = ['temperature', 'humidity', 'sound']
+
+/**
+ * Pick an interval so that at most ~maxTicks labels appear on the X axis.
+ * interval=0 means "show every tick", interval=1 "show every other", etc.
+ */
+function calcInterval(dataLength, maxTicks = 8) {
+  if (dataLength <= maxTicks) return 0
+  return Math.ceil(dataLength / maxTicks) - 1
+}
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
@@ -36,28 +44,28 @@ const CustomLegend = ({ payload }) => (
   </div>
 )
 
-const ComparativeChart = ({ data, isLoading, xAxisTicks }) => {
-  if (isLoading) return <div className="h-56 sm:h-72 bg-gray-50 rounded-xl animate-pulse" />
+const ComparativeChart = ({ data, isLoading }) => {
+  if (isLoading) return <div className="w-full h-full bg-gray-50 rounded-xl animate-pulse" />
   if (!data?.length) return (
-    <div className="h-56 sm:h-72 flex items-center justify-center bg-gray-50 rounded-xl text-sm text-gray-300">
+    <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-xl text-sm text-gray-300">
       Pas encore de données pour cette période
     </div>
   )
 
   const weightKey = METRIC_CONFIG.weight.chartKey
   const hasWeight = data.some(d => d[weightKey] != null)
+  const interval  = calcInterval(data.length, 8)
 
   return (
-    <ResponsiveContainer width="100%" height="100%" minHeight={220} maxHeight={300}>
+    <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={data} margin={{ top: 8, right: hasWeight ? 36 : 8, left: -16, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
         <XAxis
           dataKey="time"
-          ticks={xAxisTicks}
+          interval={interval}
           tick={{ fontSize: 9, fill: '#9CA3AF' }}
           axisLine={false}
           tickLine={false}
-          interval="preserveStartEnd"
         />
         <YAxis
           yAxisId="left"
