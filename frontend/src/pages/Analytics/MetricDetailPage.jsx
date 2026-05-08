@@ -92,8 +92,8 @@ const MetricDetailPage = () => {
   } = useMetricDetail(id, metric);
 
   return (
-    <div className="min-h-full" style={{ background: '#FBFAF7' }}>
-      <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+    <div className="h-full flex flex-col overflow-y-auto" style={{ background: '#FBFAF7' }}>
+      <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 flex-1">
 
         {/* ── Top bar ── */}
         <div className="flex items-start gap-3 justify-between">
@@ -140,7 +140,7 @@ const MetricDetailPage = () => {
         </div>
 
         {/* ── Detail chart ── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 flex flex-col flex-1 min-h-[380px]">
 
           {/* Chart controls — stacks cleanly on mobile */}
           <div className="flex flex-col gap-3 mb-5">
@@ -180,13 +180,14 @@ const MetricDetailPage = () => {
             </div>
           </div>
 
-          <MetricDetailChart
-            data={chartData}
-            metric={metric}
-            unit={unit}
-            isLoading={isLoading}
-            xAxisTicks={xAxisTicks}
-          />
+          <div style={{ height: 300 }}>
+            <MetricDetailChart
+              data={chartData}
+              metric={metric}
+              unit={unit}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
 
       </div>
