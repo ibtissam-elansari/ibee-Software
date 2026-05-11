@@ -45,10 +45,10 @@ export const METRIC_CONFIG = {
     fullLabel    : 'Poids',
     unit         : 'kg',
     chartKey     : 'Poids (kg)',
-    chartColor   : '#1C1C1C',
+    chartColor   : '#fe9900',
     Icon         : Scale,
     iconBg       : 'bg-gray-100',
-    iconColor    : '#374151',
+    iconColor    : '#fe9900',
     thresholdKey : 'weight_drop_kg',  // null = disabled
     scale        : v => v,
   },
