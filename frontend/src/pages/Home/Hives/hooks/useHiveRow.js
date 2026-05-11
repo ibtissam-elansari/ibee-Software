@@ -28,6 +28,7 @@ export function useHiveRow(hiveId, latestProp = null) {
   const soundHz    = soundToHz(sound);
   const status     = deriveStatus(temp, humidity, sound, doorOpen);
   const urgent     = status === 'Urgente';
+  
 
   return {
     isLoading,
@@ -47,6 +48,8 @@ export function useHiveRow(hiveId, latestProp = null) {
       rowBg: urgent
         ? 'bg-red-50 border border-red-300 rounded-xl'
         : 'border border-transparent hover:bg-gray-50',
+      hive_state    : latest?.hive_state    ?? null,
+      ai_confidence : latest?.ai_confidence ?? null,
     },
   };
 }

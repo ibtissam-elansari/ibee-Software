@@ -3,6 +3,7 @@ import { useHiveRow } from '../hooks/useHiveRow';
 import BatteryCell  from './BatteryCell';
 import SignalCell   from './SignalCell';
 import SecurityCell from './SecurityCell';
+import HiveStateBadge from './HiveStateBadge'
 
 const HiveRow = ({ hive, latest: latestProp, onClick }) => { 
   const { isLoading, display } = useHiveRow(hive.id, latestProp); 
@@ -31,9 +32,11 @@ const HiveRow = ({ hive, latest: latestProp, onClick }) => {
         {(hive.name ?? hive.dev_eui ?? '—').toUpperCase()}
       </td>
 
-      {/* ETAT */}
-      <td className={`${cell} ${display.statusColor}`}>
-        {display.status}
+      <td className={cell}>
+        <div className="flex flex-col gap-0.5">
+          <span className={display.statusColor}>{display.status}</span>
+          <HiveStateBadge state={display.hive_state} confidence={display.ai_confidence} size="xs" />
+        </div>
       </td>
 
       {/* BATTERIE */}

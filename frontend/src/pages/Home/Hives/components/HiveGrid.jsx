@@ -3,6 +3,7 @@ import { useHiveLatest } from '../../../../hooks/useHives'
 import BatteryCell  from './BatteryCell'
 import SignalCell   from './SignalCell'
 import SecurityCell from './SecurityCell'
+import HiveStateBadge from './HiveStateBadge'
 
 const STATUS_STYLES = {
   Urgente  : { label: 'Urgent',    className: 'text-red-500   bg-red-50   border-red-200'   },
@@ -62,6 +63,7 @@ const HiveCard = ({ hive, onHiveClick }) => {
         <span className="text-xs font-bold text-gray-800 tracking-wide truncate">
           {hive.name?.toUpperCase()}
         </span>
+        <HiveStateBadge state={latest?.hive_state} confidence={latest?.ai_confidence} size="xs" />
         <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${style.className}`}>
           {style.label}
         </span>
