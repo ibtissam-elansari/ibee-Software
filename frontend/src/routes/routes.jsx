@@ -1,4 +1,4 @@
-// routes/routes.jsx
+// routes/routes.jsx  — add GestionMapPage to the scoped routes
 
 import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
@@ -8,19 +8,20 @@ import AuthLayout      from '../layout/AuthLayout';
 import ProtectedRoute  from './ProtectedRoute';
 import useAuthStore    from '../store/useAuthStore';
 
-import AuthPage             from '../pages/Auth/AuthPage';
-import HomePage             from '../pages/Home/HomePage';
-import GestionPage          from '../pages/Gestion/GestionPage';
-import GestionParametresPage          from '../pages/Gestion/GestionParametresPage';
-import HiveAnalyticsPage    from '../pages/Analytics/HiveAnalyticsPage';
-import MetricDetailPage     from '../pages/Analytics/MetricDetailPage';
-import AlertStatsPage       from '../pages/AlertStats/AlertStatsPage';
-import ApiculteursPage      from '../pages/Apiculteurs/ApiculteursPage';
-import ProfilePage          from '../pages/Settings/ProfilePage';
+import AuthPage              from '../pages/Auth/AuthPage';
+import HomePage              from '../pages/Home/HomePage';
+import GestionPage           from '../pages/Gestion/GestionPage';
+import GestionMapPage        from '../pages/Gestion/GestionMapPage';   // ← NEW
+import GestionParametresPage from '../pages/Gestion/GestionParametresPage';
+import HiveAnalyticsPage     from '../pages/Analytics/HiveAnalyticsPage';
+import MetricDetailPage      from '../pages/Analytics/MetricDetailPage';
+import AlertStatsPage        from '../pages/AlertStats/AlertStatsPage';
+import ApiculteursPage       from '../pages/Apiculteurs/ApiculteursPage';
+import ProfilePage           from '../pages/Settings/ProfilePage';
 import AccountManagementPage from '../pages/Settings/AccountManagementPage';
-import RoleManagementPage   from '../pages/RoleManagement/RoleManagementPage';
-import SupportPage          from '../pages/Support/SupportPage';
-import SupportDashboardPage from '../pages/Support/SupportDashboardPage';
+import RoleManagementPage    from '../pages/RoleManagement/RoleManagementPage';
+import SupportPage           from '../pages/Support/SupportPage';
+import SupportDashboardPage  from '../pages/Support/SupportDashboardPage';
 
 const RootRedirect = () => {
   const user = useAuthStore((s) => s.user);
@@ -56,17 +57,18 @@ export const router = createBrowserRouter([
       path   : '/apiculteurs/:apiculteurId',
       element: <DashboardLayout />,
       children: [
-        { index: true,                                 element: <Navigate to="dashboard" replace /> },
-        { path: 'dashboard',                           element: <HomePage /> },
-        { path: 'gestion',                             element: <GestionPage /> },
-        { path: 'thresholds',                          element: <GestionParametresPage /> },
-        { path: 'gestion/:hiveId',                     element: <HiveAnalyticsPage /> },
-        { path: 'gestion/:hiveId/details/:metric',     element: <MetricDetailPage /> },
-        { path: 'statistique-alertes',                 element: <AlertStatsPage /> },
-        { path: 'parametres/profile',                  element: <ProfilePage /> },
-        { path: 'parametres/compte',                   element: <AccountManagementPage /> },
-        { path: 'parametres',                          element: <Navigate to="parametres/profile" replace /> },
-        { path: 'support',                             element: <SupportPage /> },
+        { index: true,                                element: <Navigate to="dashboard" replace /> },
+        { path: 'dashboard',                          element: <HomePage /> },
+        { path: 'gestion',                            element: <GestionPage /> },
+        { path: 'gestion/map',                        element: <GestionMapPage /> },         // ← NEW
+        { path: 'thresholds',                         element: <GestionParametresPage /> },
+        { path: 'gestion/:hiveId',                    element: <HiveAnalyticsPage /> },
+        { path: 'gestion/:hiveId/details/:metric',    element: <MetricDetailPage /> },
+        { path: 'statistique-alertes',                element: <AlertStatsPage /> },
+        { path: 'parametres/profile',                 element: <ProfilePage /> },
+        { path: 'parametres/compte',                  element: <AccountManagementPage /> },
+        { path: 'parametres',                         element: <Navigate to="parametres/profile" replace /> },
+        { path: 'support',                            element: <SupportPage /> },
       ],
     }],
   },
