@@ -171,6 +171,9 @@ class Measurement(SQLModel, table=True):
 
     gps_lat   : Optional[float] = None
     gps_lng   : Optional[float] = None
+    hive_state : Optional[str] = None
+    
+    ai_confidence : Optional[float] = None
     battery_v : Optional[float] = None
 
     rssi : Optional[int]   = None

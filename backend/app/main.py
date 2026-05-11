@@ -16,11 +16,14 @@ from app.api.routes_alert_stats   import router as alert_stats_router
 from app.api.routes_apiculteurs   import router as apiculteurs_router
 from app.api.routes_support       import router as support_router
 from app.api.routes_threshold_profiles import router as threshold_profiles_router
+from contextlib import asynccontextmanager
+from app.ai.predict import warm_up
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await create_db_and_tables()
+    warm_up()
     yield
 
 
