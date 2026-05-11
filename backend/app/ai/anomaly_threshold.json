@@ -1,0 +1,4 @@
+{
+  "anomaly_score_threshold": -0.042506506808664246,
+  "note": "Flag reading as anomaly when anomaly_score < this value"
+}

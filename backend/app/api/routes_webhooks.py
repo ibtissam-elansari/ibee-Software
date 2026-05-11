@@ -11,6 +11,7 @@ from app.api.routes_hives import update_sse_cache
 from app.core.payload_v1 import decode_payload_v1_from_base64
 from app.db.engine import get_session
 from app.models.models import Device, Measurement, Hive
+from app.ai.predict import predict as ai_predict
 
 router = APIRouter()
 
@@ -159,6 +160,9 @@ async def chirpstack_uplink(
         rssi          = rssi,
         snr           = snr,
     )
+    ai = ai_predict(device.dev_eui, decoded, ts_dt)
+    m.hive_state = ai.label
+    m.ai_confidence = ai.confidence
     session.add(m)
     await session.commit()
     await session.refresh(m)
@@ -178,6 +182,9 @@ async def chirpstack_uplink(
         "battery_v"     : m.battery_v,
         "rssi"          : m.rssi,
         "snr"           : m.snr,
+        "hive_state" : m.hive_state,
+        "ai_confidence" : m.ai_confidence,
+        "ai_color" : ai.color,
     }
     update_sse_cache(device.hive_id, sse_payload)
 
