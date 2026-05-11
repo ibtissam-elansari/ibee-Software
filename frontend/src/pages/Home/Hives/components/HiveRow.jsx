@@ -27,7 +27,7 @@ const HiveRow = ({ hive, latest: latestProp, onClick }) => {
       onClick={() => onClick?.(hive)}
     >
       {/* RUCHE ID */}
-      <td className={`${cell} ${display.leftAccent} font-bold text-gray-900 tracking-wide`}>
+      <td className={`${cell} font-bold text-gray-900 tracking-wide`}>
         {(hive.name ?? hive.dev_eui ?? '—').toUpperCase()}
       </td>
 
