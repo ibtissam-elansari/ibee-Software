@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   ResponsiveContainer, ComposedChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -7,10 +7,6 @@ import { METRIC_CONFIG } from '../config/metricConfig'
 
 const LEFT_LINES = ['temperature', 'humidity', 'sound']
 
-/**
- * Pick an interval so that at most ~maxTicks labels appear on the X axis.
- * interval=0 means "show every tick", interval=1 "show every other", etc.
- */
 function calcInterval(dataLength, maxTicks = 8) {
   if (dataLength <= maxTicks) return 0
   return Math.ceil(dataLength / maxTicks) - 1
@@ -31,20 +27,39 @@ const CustomTooltip = ({ active, payload, label }) => {
   )
 }
 
-const CustomLegend = ({ payload }) => (
+const CustomLegend = ({ payload, hidden, onToggle }) => (
   <div className="flex items-center justify-center gap-3 sm:gap-5 pt-3 flex-wrap">
-    {payload.map(entry => (
-      <div key={entry.value} className="flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
-        <span className="text-[10px] sm:text-[11px] text-gray-500 font-medium">
-          {entry.value.split(' (')[0]}
-        </span>
-      </div>
-    ))}
+    {payload.map(entry => {
+      const isHidden = hidden.includes(entry.dataKey)
+      return (
+        <button
+          key={entry.value}
+          onClick={() => onToggle(entry.dataKey)}
+          className="flex items-center gap-1.5 transition-opacity duration-150"
+          style={{ opacity: isHidden ? 0.3 : 1 }}
+        >
+          <span
+            className="w-2 h-2 rounded-full flex-shrink-0"
+            style={{ backgroundColor: isHidden ? '#D1D5DB' : entry.color }}
+          />
+          <span className="text-[10px] sm:text-[11px] text-gray-500 font-medium">
+            {entry.value.split(' (')[0]}
+          </span>
+        </button>
+      )
+    })}
   </div>
 )
 
 const ComparativeChart = ({ data, isLoading }) => {
+  const [hidden, setHidden] = useState([])
+
+  const toggle = (dataKey) => {
+    setHidden(prev =>
+      prev.includes(dataKey) ? prev.filter(k => k !== dataKey) : [...prev, dataKey]
+    )
+  }
+
   if (isLoading) return <div className="w-full h-full bg-gray-50 rounded-xl animate-pulse" />
   if (!data?.length) return (
     <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-xl text-sm text-gray-300">
@@ -58,7 +73,7 @@ const ComparativeChart = ({ data, isLoading }) => {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 8, right: hasWeight ? 36 : 8, left: -16, bottom: 0 }}>
+      <ComposedChart data={data} margin={{ top: 8, right: hasWeight ? 36 : 8, left: 10, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
         <XAxis
           dataKey="time"
@@ -91,7 +106,7 @@ const ComparativeChart = ({ data, isLoading }) => {
           content={<CustomTooltip />}
           cursor={{ stroke: '#E5E7EB', strokeWidth: 1, strokeDasharray: '4 4' }}
         />
-        <Legend content={<CustomLegend />} />
+        <Legend content={(props) => <CustomLegend {...props} hidden={hidden} onToggle={toggle} />} />
 
         {LEFT_LINES.map(k => {
           const cfg = METRIC_CONFIG[k]
@@ -105,6 +120,7 @@ const ComparativeChart = ({ data, isLoading }) => {
               strokeWidth={2}
               dot={false}
               connectNulls
+              hide={hidden.includes(cfg.chartKey)}
               activeDot={{ r: 5, fill: cfg.chartColor, stroke: 'white', strokeWidth: 2 }}
             />
           )
@@ -122,6 +138,7 @@ const ComparativeChart = ({ data, isLoading }) => {
               strokeWidth={2.5}
               dot={false}
               connectNulls
+              hide={hidden.includes(cfg.chartKey)}
               activeDot={{ r: 5, fill: cfg.chartColor, stroke: 'white', strokeWidth: 2 }}
             />
           )
