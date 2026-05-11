@@ -83,3 +83,5 @@ export function useDeleteHive() {
     onSuccess : () => qc.invalidateQueries({ queryKey: ['hives'] }),
   })
 }
+
+export const useHives = useHiveList
