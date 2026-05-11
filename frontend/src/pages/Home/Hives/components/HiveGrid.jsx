@@ -1,20 +1,20 @@
 import React from 'react'
-import { useHiveLatest } from '../../../../hooks/useHives'
-import BatteryCell  from './BatteryCell'
-import SignalCell   from './SignalCell'
-import SecurityCell from './SecurityCell'
-import HiveStateBadge from './HiveStateBadge'
+import { useHiveRow }      from '../hooks/useHiveRow'
+import BatteryCell         from './BatteryCell'
+import SignalCell          from './SignalCell'
+import SecurityCell        from './SecurityCell'
+import HiveStateBadge      from './HiveStateBadge'
 
 const STATUS_STYLES = {
-  Urgente  : { label: 'Urgent',    className: 'text-red-500   bg-red-50   border-red-200'   },
-  Attention: { label: 'Attention', className: 'text-amber-500 bg-amber-50 border-amber-200' },
-  Normale  : { label: 'Normale',   className: 'text-green-600 bg-green-50 border-green-200' },
+  Urgent    : { className: 'text-red-500   bg-red-50   border-red-200'   },
+  Attention : { className: 'text-amber-500 bg-amber-50 border-amber-200' },
+  Normale   : { className: 'text-green-600 bg-green-50 border-green-200' },
 }
 
 const CARD_BORDER = {
-  Urgente  : 'border-red-300   bg-red-50/30',
-  Attention: 'border-amber-300 bg-amber-50/20',
-  Normale  : 'border-gray-200  bg-white',
+  Urgent    : 'border-red-300   bg-red-50/30',
+  Attention : 'border-amber-300 bg-amber-50/20',
+  Normale   : 'border-gray-200  bg-white',
 }
 
 const Stat = ({ label, value, alert = false, loading = false }) => (
@@ -30,27 +30,10 @@ const Stat = ({ label, value, alert = false, loading = false }) => (
 )
 
 const HiveCard = ({ hive, onHiveClick }) => {
-  const { data: latest, isLoading } = useHiveLatest(hive.id)
+  const { isLoading, display, latest } = useHiveRow(hive.id)
 
-  const temp     = latest?.temperature_c ?? null
-  const humidity = latest?.humidity_pct  ?? null
-  const sound    = latest?.sound_level   ?? null
-  const doorOpen = latest?.door_open     ?? null
-  const rssi     = latest?.rssi          ?? null
-  const battV    = latest?.battery_v     ?? null
-  const weight   = latest?.weight_kg     ?? null
-
-  const battPct = battV != null
-    ? Math.min(100, Math.max(0, Math.round(((battV - 3.3) / 0.9) * 100)))
-    : null
-
-  const status =
-    temp > 40 || humidity > 80 || doorOpen === true ? 'Urgente'   :
-    temp > 35 || humidity > 70                       ? 'Attention' :
-    'Normale'
-
-  const style = STATUS_STYLES[status]
-  const card  = CARD_BORDER[status]
+  const style  = STATUS_STYLES[display.status] ?? STATUS_STYLES.Normale
+  const card   = CARD_BORDER[display.status]   ?? CARD_BORDER.Normale
 
   return (
     <div
@@ -58,57 +41,61 @@ const HiveCard = ({ hive, onHiveClick }) => {
       className={`rounded-xl border p-3 cursor-pointer
         hover:shadow-md transition-all duration-200 ${card}`}
     >
-      {/* Header */}
+      {/* Header — status badge + AI badge */}
       <div className="flex items-center justify-between mb-3 gap-1 min-w-0">
         <span className="text-xs font-bold text-gray-800 tracking-wide truncate">
           {hive.name?.toUpperCase()}
         </span>
-        <HiveStateBadge state={latest?.hive_state} confidence={latest?.ai_confidence} size="xs" />
-        <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${style.className}`}>
-          {style.label}
-        </span>
+        <div className="flex items-center gap-1 flex-shrink-0 flex-wrap justify-end">
+          <HiveStateBadge
+            state={display.hive_state}
+            confidence={display.ai_confidence}
+            size="xs"
+          />
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${style.className}`}>
+            {display.status}
+          </span>
+        </div>
       </div>
 
-      {/* Stats — 2×2 grid so values never run together */}
-      <div >
-        <div className='flex flex-row justify-around mb-4'>
+      {/* Stats */}
+      <div>
+        <div className="flex flex-row justify-around mb-4">
           <Stat
             label="TEMP"
-            value={temp != null ? `${temp.toFixed(1)}°C` : null}
-            alert={temp > 40}
+            value={display.temp != null ? `${display.temp.toFixed(1)}°C` : null}
+            alert={display.tempColor === 'text-red-500'}
             loading={isLoading}
           />
           <Stat
             label="HUMIDITÉ"
-            value={humidity != null ? `${humidity.toFixed(0)}%` : null}
-            alert={humidity > 80}
+            value={display.humidity != null ? `${display.humidity.toFixed(0)}%` : null}
+            alert={display.humidityColor === 'text-red-500'}
             loading={isLoading}
           />
         </div>
-
-        <div className='flex flex-row justify-around mb-4'>
+        <div className="flex flex-row justify-around mb-4">
           <Stat
             label="SONORE"
-            value={sound != null ? `${sound * 2}Hz` : null}
-            alert={sound > 80}
+            value={display.soundHz}
+            alert={display.soundColor === 'text-red-500'}
             loading={isLoading}
           />
           <Stat
             label="POIDS"
-            value={weight != null ? `${weight.toFixed(1)}kg` : null}
-            alert={weight < 10}
+            value={display.weight != null ? `${display.weight.toFixed(1)}kg` : null}
             loading={isLoading}
           />
         </div>
       </div>
 
-      {/* Footer row */}
+      {/* Footer */}
       {!isLoading && (
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <BatteryCell value={battPct} />
+          <BatteryCell value={display.batteryPct} />
           <div className="flex items-center gap-2">
-            <SignalCell rssi={rssi} urgent={status === 'Urgente'} />
-            <SecurityCell doorOpen={doorOpen} />
+            <SignalCell   rssi={display.rssi}       urgent={display.urgent} />
+            <SecurityCell doorOpen={display.doorOpen} />
           </div>
         </div>
       )}

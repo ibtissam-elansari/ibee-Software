@@ -1,14 +1,13 @@
-import React from 'react';
-import { useHiveRow } from '../hooks/useHiveRow';
-import BatteryCell  from './BatteryCell';
-import SignalCell   from './SignalCell';
-import SecurityCell from './SecurityCell';
-import HiveStateBadge from './HiveStateBadge'
+import React from 'react'
+import { useHiveRow }  from '../hooks/useHiveRow'
+import BatteryCell     from './BatteryCell'
+import SignalCell      from './SignalCell'
+import SecurityCell    from './SecurityCell'
+import HiveStateBadge  from './HiveStateBadge'
 
-const HiveRow = ({ hive, latest: latestProp, onClick }) => { 
-  const { isLoading, display } = useHiveRow(hive.id, latestProp); 
-
-  const cell = 'px-4 py-4 text-sm';
+const HiveRow = ({ hive, latest: latestProp, onClick }) => {
+  const { isLoading, display } = useHiveRow(hive.id, latestProp)
+  const cell = 'px-4 py-4 text-sm'
 
   if (isLoading) {
     return (
@@ -19,23 +18,28 @@ const HiveRow = ({ hive, latest: latestProp, onClick }) => {
           </td>
         ))}
       </tr>
-    );
+    )
   }
 
   return (
     <tr
-      className={`${display.rowBg} transition-colors cursor-pointer p-20`}
+      className={`${display.rowBg} transition-colors cursor-pointer`}
       onClick={() => onClick?.(hive)}
     >
-      {/* RUCHE ID — carries the left accent bar */}
+      {/* RUCHE ID */}
       <td className={`${cell} ${display.leftAccent} font-bold text-gray-900 tracking-wide`}>
         {(hive.name ?? hive.dev_eui ?? '—').toUpperCase()}
       </td>
 
+      {/* ETAT — threshold-aware status + AI badge stacked */}
       <td className={cell}>
         <div className="flex flex-col gap-0.5">
           <span className={display.statusColor}>{display.status}</span>
-          <HiveStateBadge state={display.hive_state} confidence={display.ai_confidence} size="xs" />
+          <HiveStateBadge
+            state={display.hive_state}
+            confidence={display.ai_confidence}
+            size="xs"
+          />
         </div>
       </td>
 
@@ -69,7 +73,7 @@ const HiveRow = ({ hive, latest: latestProp, onClick }) => {
         <SecurityCell doorOpen={display.doorOpen} />
       </td>
     </tr>
-  );
-};
+  )
+}
 
-export default HiveRow;
+export default HiveRow
