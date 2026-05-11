@@ -180,7 +180,7 @@ const MetricDetailPage = () => {
             </div>
           </div>
 
-          <div style={{ height: 300 }}>
+          <div style={{ height: 500 }}>
             <MetricDetailChart
               data={chartData}
               metric={metric}
