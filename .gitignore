@@ -95,3 +95,6 @@ ibee-ai/data/processed/
 tmp/
 temp/
 *.tmp
+
+
+*.pkl
