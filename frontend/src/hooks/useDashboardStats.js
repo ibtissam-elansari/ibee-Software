@@ -1,69 +1,70 @@
-// hooks/useDashboardStats.js
-import { useQuery }  from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
-import { getHiveLatest } from '../api/hives'
-import { useHiveList }   from './useHives'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useHives, useHiveLatest } from './useHives'
+import { getHiveEffectiveThresholds } from '../api/hives'
+import { measurementAlertStatus } from './useHiveThresholds'
 
-const SOUND_THRESHOLD   = 70
-const BATTERY_THRESHOLD = 3.5
-const FIFTEEN_MIN       = 15 * 60 * 1000
+const FIFTEEN_MIN = 15 * 60 * 1000
+
+// One hook per hive — fetches latest + effective thresholds
+function useHiveSummary(hive) {
+  const { data: latest }     = useHiveLatest(hive.id)
+  const { data: thresholds } = useQuery({
+    queryKey  : ['hive-thresholds', hive.id],
+    queryFn   : () => getHiveEffectiveThresholds(hive.id),
+    staleTime : FIFTEEN_MIN,
+    enabled   : !!hive.id,
+  })
+  return { latest, thresholds }
+}
+
+// Internal component-like hook: accepts pre-fetched latest + thresholds
+function alertStatusFor(latest, thresholds) {
+  if (!latest || !thresholds) return 'normal'
+  return measurementAlertStatus(latest, thresholds)
+}
 
 export function useDashboardStats() {
-  const { apiculteurId } = useParams()
+  const { data: hives = [], isLoading, isError } = useHives()
 
-  const {
-    data: hives = [],
-    isLoading: hivesLoading,
-    error: hivesError,
-  } = useHiveList(apiculteurId)
-
-  const latestQuery = useQuery({
-    queryKey       : ['dashboard-latest', apiculteurId, hives.map(h => h.id)],
-    queryFn        : async () => {
-      if (!hives.length) return []
-      const results = await Promise.allSettled(hives.map(h => getHiveLatest(h.id)))
-      return results.map((r, i) => ({
-        hive_id : hives[i].id,
-        hive    : hives[i],             // ← carry the full hive object
-        data    : r.status === 'fulfilled' ? r.value : null,
-      }))
-    },
-    enabled        : hives.length > 0,
-    staleTime      : FIFTEEN_MIN,
-    refetchInterval: FIFTEEN_MIN,
+  // Fetch latest + thresholds for every hive in parallel
+  // (React Query deduplicates — these are already cached by HiveRow/HiveCard)
+  const summaries = hives.map(h => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useHiveSummary(h)
   })
 
-  const latestByHive = latestQuery.data ?? []
-  const totalHives   = hives.length
+  const stats = useMemo(() => {
+    const totalHives    = hives.length
+    const totalWithData = summaries.filter(s => s.latest).length
+    const openHivesList = []
+    let alertCount      = 0
+    let secureCount     = 0
 
-  // ── Security ───────────────────────────────────────────────────────────────
-  const openEntries   = latestByHive.filter(({ data }) => data?.door_open === true)
-  const doorOpenCount = openEntries.length
-  const secureCount   = latestByHive.filter(({ data }) => data !== null && !data?.door_open).length
+    hives.forEach((hive, i) => {
+      const { latest, thresholds } = summaries[i]
+      if (!latest) return
 
-  // The actual hive objects that are currently open — used by the popover
-  const openHives = openEntries.map(({ hive }) => hive).filter(Boolean)
+      const status = alertStatusFor(latest, thresholds)
+      if (status === 'urgente' || status === 'attention') alertCount++
 
-  // ── Alerts ─────────────────────────────────────────────────────────────────
-  const alertHives = latestByHive.filter(({ data }) => {
-    if (!data) return false
-    return (
-      data.door_open === true                            ||
-      (data.sound_level   ?? 0)   > SOUND_THRESHOLD     ||
-      (data.temperature_c ?? 0)   > 38                  ||
-      (data.battery_v     ?? 999) < BATTERY_THRESHOLD
-    )
-  })
+      if (!latest.door_open) {
+        secureCount++
+      } else {
+        openHivesList.push(hive)
+      }
+    })
 
-  return {
-    isLoading    : hivesLoading || latestQuery.isLoading,
-    error        : hivesError   || latestQuery.error,
-    totalHives,
-    hasUrgent    : alertHives.length > 0,
-    alertCount   : alertHives.length,
-    secureCount,
-    doorOpenCount,
-    openHives,                          // ← new
-    totalWithData: latestByHive.filter(({ data }) => data !== null).length,
-  }
+    return {
+      totalHives,
+      totalWithData,
+      alertCount,
+      secureCount,
+      doorOpenCount: openHivesList.length,
+      openHives    : openHivesList,
+      hasUrgent    : alertCount > 0,
+    }
+  }, [hives, summaries])
+
+  return { isLoading, isError, ...stats }
 }

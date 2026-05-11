@@ -19,5 +19,5 @@ export const getHiveHistory = (id, limit = 200, start = null, end = null) => {
 }
 export const getHiveStats   = (id)           => http.get(`/api/hives/${id}/stats`).then(r => r.data);
 
-export const getHiveThresholds = (id) =>
-  http.get(`/api/hives/${id}/thresholds/effective`).then(r => r.data)
+export const getHiveEffectiveThresholds = (hiveId) =>
+  apiClient.get(`/hives/${hiveId}/thresholds/effective`).then(r => r.data)
