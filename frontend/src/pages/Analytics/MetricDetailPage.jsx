@@ -4,6 +4,7 @@ import { ChevronLeft, Bell, Download, Calendar } from 'lucide-react';
 import { Thermometer, Droplets, Volume2, Scale } from 'lucide-react';
 import { useMetricDetail } from './hooks/useMetricDetail';
 import MetricDetailChart from './components/MetricDetailChart';
+import { METRIC_CONFIG } from './config/metricConfig';   // ← ADD
 
 const METRIC_UI = {
   temperature: {
@@ -87,9 +88,13 @@ const MetricDetailPage = () => {
     startDate, setStartDate,
     endDate,   setEndDate,
     avg, max, min, alerts,
-    chartData, xAxisTicks,
+    chartData,
+    chartThreshold,   // ← ADD — per-hive scaled threshold from useMetricDetail
     exportExcel,
   } = useMetricDetail(id, metric);
+
+  // Chart color from METRIC_CONFIG (single source of truth for colors)
+  const chartColor = METRIC_CONFIG[metric]?.chartColor ?? '#22C55E';
 
   return (
     <div className="h-full flex flex-col overflow-y-auto" style={{ background: '#FBFAF7' }}>
@@ -108,7 +113,6 @@ const MetricDetailPage = () => {
             </button>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">
-                {/* Shorten title on mobile */}
                 <span className="sm:hidden">{cfg.title}</span>
                 <span className="hidden sm:inline">Détails : {cfg.title}</span>
               </h1>
@@ -127,7 +131,7 @@ const MetricDetailPage = () => {
           </button>
         </div>
 
-        {/* ── Stat cards — 2-col on mobile, 4-col on sm+ ── */}
+        {/* ── Stat cards ── */}
         <div className="grid grid-cols-2 sm:flex sm:gap-4 gap-3">
           <StatCard label="Moyenne" value={avg} unit={unit} color="text-gray-900"
             Icon={cfg.AvgIcon} iconBg={cfg.avgIconBg} iconColor={cfg.avgIconColor} loading={isLoading} />
@@ -142,12 +146,9 @@ const MetricDetailPage = () => {
         {/* ── Detail chart ── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 flex flex-col flex-1 min-h-[380px]">
 
-          {/* Chart controls — stacks cleanly on mobile */}
           <div className="flex flex-col gap-3 mb-5">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-bold text-gray-900">Évolution Détaillée</h2>
-
-              {/* Range tabs */}
               <div className="flex items-center gap-0.5 bg-gray-100 border border-gray-200 rounded-lg p-0.5">
                 {[{ id: 'J', label: 'J' }, { id: '7j', label: '7j' }, { id: 'Mois', label: 'Mois' }].map(t => (
                   <RangeTab key={t.id} id={t.id} label={t.label} active={range === t.id} onClick={setRange} />
@@ -155,7 +156,6 @@ const MetricDetailPage = () => {
               </div>
             </div>
 
-            {/* Date range pickers — full row on mobile */}
             <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
               <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
               <input
@@ -185,6 +185,8 @@ const MetricDetailPage = () => {
               data={chartData}
               metric={metric}
               unit={unit}
+              color={chartColor}        // ← now correctly sourced
+              chartThreshold={chartThreshold}  // ← now correctly destructured
               isLoading={isLoading}
             />
           </div>
