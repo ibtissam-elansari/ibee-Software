@@ -1,10 +1,3 @@
-// pages/RoleManagement/RoleManagementPage.jsx
-//
-// Superuser-only page: manage ALL users across ALL cooperatives.
-// Users are grouped by their apiculteur (cooperative).
-// Superuser can create/edit/delete any role: user, admin, superuser.
-// Matches image 4 design.
-
 import React, { useState, useMemo } from 'react';
 import { Search, PlusCircle, Pencil, Trash2, UserCircle2, ChevronRight } from 'lucide-react';
 import { useUserList, useCreateUser, useUpdateUser, useDeleteUser } from '../../hooks/useUsers';
@@ -32,55 +25,54 @@ const RoleBadge = ({ role }) => {
 };
 
 const RoleManagementPage = () => {
-  const { data: users       = [], isLoading: usersLoading  } = useUserList();
-  const { data: apiculteurs = [], isLoading: apisLoading   } = useApiculteurList();
+  const { data: users       = [], isLoading: usersLoading } = useUserList();
+  const { data: apiculteurs = [], isLoading: apisLoading  } = useApiculteurList();
 
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
   const deleteMutation = useDeleteUser();
 
-  const [search,      setSearch]     = useState('');
-  const [roleFilter,  setRoleFilter] = useState('');
-  const [modal,       setModal]      = useState(null);
-  const [targetUser,  setTargetUser] = useState(null);
+  const [search,     setSearch]    = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [modal,      setModal]     = useState(null);   // 'add' | 'edit' | 'delete'
+  const [targetUser, setTargetUser] = useState(null);
 
   const openAdd    = ()     => { setTargetUser(null); setModal('add');    };
   const openEdit   = (user) => { setTargetUser(user); setModal('edit');   };
   const openDelete = (user) => { setTargetUser(user); setModal('delete'); };
   const close      = ()     => { setModal(null); setTargetUser(null);     };
 
-  const handleCreate = (data) => createMutation.mutate(data,                    { onSuccess: close });
-  const handleUpdate = (data) => updateMutation.mutate({ id: targetUser.id, data }, { onSuccess: close });
-  const handleDelete = ()     => deleteMutation.mutate(targetUser.id,            { onSuccess: close });
+  // `data` comes straight from the modal form — it already contains apiculteur_id
+  const handleCreate = (data) =>
+    createMutation.mutate(data, { onSuccess: close });
 
-  // Group users by apiculteur_id — superusers (apiculteur_id=null) get their own group
+  const handleUpdate = (data) =>
+    updateMutation.mutate({ id: targetUser.id, data }, { onSuccess: close });
+
+  const handleDelete = () =>
+    deleteMutation.mutate(targetUser.id, { onSuccess: close });
+
+  // Group users by apiculteur_id; superusers (apiculteur_id = null) → __platform__
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
 
-    const filteredUsers = users.filter(u => {
+    const filtered = users.filter(u => {
       const matchSearch = !q || u.email?.toLowerCase().includes(q) || u.full_name?.toLowerCase().includes(q);
       const matchRole   = !roleFilter || u.role === roleFilter;
       return matchSearch && matchRole;
     });
 
-    // Build groups: one per apiculteur + one for superusers (null apiculteur)
     const groups = {};
-
-    // Add all apiculteurs as groups (even empty ones)
-    apiculteurs.forEach(a => {
-      groups[a.id] = { apiculteur: a, users: [] };
-    });
-
-    // Special group for platform-level superusers
+    apiculteurs.forEach(a => { groups[a.id] = { apiculteur: a, users: [] }; });
     groups['__platform__'] = { apiculteur: null, users: [] };
 
-    filteredUsers.forEach(u => {
+    filtered.forEach(u => {
       const key = u.apiculteur_id ?? '__platform__';
       if (!groups[key]) groups[key] = { apiculteur: null, users: [] };
       groups[key].users.push(u);
     });
 
-    // Remove empty groups (except platform)
+    // Keep non-empty groups + all known apiculteurs (so empty coops stay visible)
     return Object.values(groups).filter(g => g.users.length > 0 || g.apiculteur !== null);
   }, [users, apiculteurs, search, roleFilter]);
 
@@ -88,7 +80,6 @@ const RoleManagementPage = () => {
 
   return (
     <div className="relative min-h-full overflow-hidden" style={{ background: '#FDFAF4' }}>
-
       <div className="relative z-10 p-8">
 
         {/* Header */}
@@ -101,29 +92,28 @@ const RoleManagementPage = () => {
 
         {/* Filters */}
         <div className="flex items-center justify-between gap-3 mb-6">
-          <div className="relative flex max-w-sm">
+          <div className="relative flex gap-2 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
             <input
               type="text"
               placeholder="Entreprise/User/mail..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-lg h-10 pl-9 pr-4 border border-gray-200 rounded-xl text-sm
+              className="h-10 pl-9 pr-4 border border-gray-200 rounded-xl text-sm
                          bg-white text-gray-700 focus:outline-none focus:border-amber-400 transition"
             />
             <select
-            value={roleFilter}
-            onChange={e => setRoleFilter(e.target.value)}
-            className="h-10 px-3 border border-gray-200 rounded-xl text-sm bg-white
-                       text-gray-600 focus:outline-none focus:border-amber-400"
-          >
-            <option value="">Rôle</option>
-            <option value="superuser">Super admin</option>
-            <option value="admin">Admin</option>
-            <option value="user">Utilisateur</option>
-          </select>
+              value={roleFilter}
+              onChange={e => setRoleFilter(e.target.value)}
+              className="h-10 px-3 border border-gray-200 rounded-xl text-sm bg-white
+                         text-gray-600 focus:outline-none focus:border-amber-400"
+            >
+              <option value="">Rôle</option>
+              <option value="superuser">Super admin</option>
+              <option value="admin">Admin</option>
+              <option value="user">Utilisateur</option>
+            </select>
           </div>
-          
 
           <button
             onClick={openAdd}
@@ -157,13 +147,13 @@ const RoleManagementPage = () => {
             Aucun utilisateur trouvé.
           </div>
         ) : (
-          grouped.map((group, gi) => {
+          grouped.map((group) => {
             if (!group.apiculteur && group.users.length === 0) return null;
             const a = group.apiculteur;
 
             return (
               <div key={a?.id ?? '__platform__'} className="mb-4">
-                {/* Group header — apiculteur row */}
+                {/* Group header */}
                 <div className="flex items-center justify-between px-6 py-3
                                 bg-gray-50 rounded-t-2xl border border-gray-100 border-b-0">
                   <div className="flex items-center gap-3">
@@ -185,7 +175,7 @@ const RoleManagementPage = () => {
                   )}
                 </div>
 
-                {/* Users in this group */}
+                {/* Users in group */}
                 <div className="border border-gray-100 border-t-0 rounded-b-2xl divide-y divide-gray-50 bg-white">
                   {group.users.length === 0 ? (
                     <div className="px-6 py-4 text-sm text-gray-300 italic">
@@ -196,7 +186,6 @@ const RoleManagementPage = () => {
                       <div key={user.id}
                         className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_80px] gap-4
                                    items-center px-6 py-3 hover:bg-gray-50 transition-colors">
-                        {/* User info */}
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
                             <UserCircle2 className="w-5 h-5 text-gray-400" />
@@ -215,23 +204,20 @@ const RoleManagementPage = () => {
                           {new Date(user.created_at).toLocaleDateString('fr-FR')}
                         </span>
 
-                        {/* login_count — green if > 0 */}
                         <span className={`text-sm font-semibold
                           ${(user.login_count ?? 0) > 0 ? 'text-green-500' : 'text-gray-300'}`}>
                           {user.login_count ?? 0}
                         </span>
 
-                        {/* last_login_at as engagement indicator */}
                         <span className="text-sm font-semibold text-green-500">
                           {user.last_login_at
                             ? (() => {
                                 const mins = Math.round((Date.now() - new Date(user.last_login_at)) / 60000);
-                                return mins < 60 ? `${mins}min` : `${Math.round(mins/60)}h`;
+                                return mins < 60 ? `${mins}min` : `${Math.round(mins / 60)}h`;
                               })()
                             : '—'}
                         </span>
 
-                        {/* Actions */}
                         <div className="flex items-center gap-3">
                           <button onClick={() => openEdit(user)}
                             className="text-gray-300 hover:text-gray-600 transition-colors">
@@ -255,20 +241,21 @@ const RoleManagementPage = () => {
       {/* Modals */}
       {(modal === 'add' || modal === 'edit') && (
         <UserFormModal
-          user        = {modal === 'edit' ? targetUser : null}
-          onClose     = {close}
-          onSubmit    = {modal === 'add' ? handleCreate : handleUpdate}
-          isSubmitting= {modal === 'add' ? createMutation.isPending : updateMutation.isPending}
-          allowedRoles= {['user', 'admin', 'superuser']}
-          apiculteurs = {apiculteurs}
+          user         = {modal === 'edit' ? targetUser : null}
+          onClose      = {close}
+          onSubmit     = {modal === 'add' ? handleCreate : handleUpdate}
+          isSubmitting = {modal === 'add' ? createMutation.isPending : updateMutation.isPending}
+          error        = {modal === 'add' ? createMutation.error    : updateMutation.error}
+          allowedRoles = {['user', 'admin', 'superuser']}
+          apiculteurs  = {apiculteurs}
         />
       )}
       {modal === 'delete' && (
         <DeleteUserModal
-          user        = {targetUser}
-          onClose     = {close}
-          onConfirm   = {handleDelete}
-          isSubmitting= {deleteMutation.isPending}
+          user         = {targetUser}
+          onClose      = {close}
+          onConfirm    = {handleDelete}
+          isSubmitting = {deleteMutation.isPending}
         />
       )}
     </div>
