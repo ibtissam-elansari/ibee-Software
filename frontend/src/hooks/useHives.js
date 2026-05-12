@@ -5,7 +5,7 @@ import {
 } from '../api/hives'
 import { getApiculteurHives } from '../api/apiculteurs'
 
-const FIFTEEN_MIN = 15 * 60 * 1000   // data cadence — never poll faster than this
+const FIFTEEN_MIN = 15 * 60 * 1000
 
 export function useHiveList(apiculteurId) {
   return useQuery({
@@ -22,19 +22,20 @@ export function useHive(id) {
     queryFn  : () => getHive(id),
     enabled  : !!id,
     staleTime: FIFTEEN_MIN,
-    // No auto-refetch — hive metadata changes only when a superuser edits it
   })
 }
 
 export function useHiveLatest(hiveId, options = {}) {
-  const { enabled: enabledOpt, ...rest } = options
+  const { enabled: enabledOpt, fresh = false, ...rest } = options
+  const stale    = fresh ? 0 : FIFTEEN_MIN
+  const interval = fresh ? 60_000 : FIFTEEN_MIN   // map refreshes every 60s
+
   return useQuery({
     queryKey       : ['hive-latest', hiveId],
     queryFn        : () => getHiveLatest(hiveId),
     enabled        : !!hiveId && (enabledOpt !== false),
-    // Data is 15-min cadence. Keep it fresh for that window; re-fetch once per cycle.
-    staleTime      : FIFTEEN_MIN,
-    refetchInterval: FIFTEEN_MIN,
+    staleTime      : stale,
+    refetchInterval: interval,
     ...rest,
   })
 }
@@ -45,8 +46,6 @@ export function useHiveHistory(hiveId, limit, start, end) {
     queryFn  : () => getHiveHistory(hiveId, limit, start, end),
     enabled  : !!hiveId,
     staleTime: FIFTEEN_MIN,
-    // No auto-refetch — history for a past window never changes.
-    // History for "today" is refetched when the query key changes (selectedDate).
   })
 }
 
@@ -84,4 +83,5 @@ export function useDeleteHive() {
   })
 }
 
+// Alias for backwards compatibility
 export const useHives = useHiveList
