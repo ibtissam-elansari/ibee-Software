@@ -19,7 +19,11 @@ const STATUS = {
 }
 const getStatusCfg = (s) => STATUS[s] ?? STATUS.unknown
 
-const hasGps = (h) => h?.gps_lat != null && h?.gps_lng != null
+const resolveGps = (hive, latest) => {
+  const lat = latest?.gps_lat ?? hive?.gps_lat
+  const lng = latest?.gps_lng ?? hive?.gps_lng
+  return lat != null && lng != null ? { lat, lng } : null
+}
 
 const FILTERS = ['Toutes', 'Urgent', 'Alerte', 'Normale']
 
@@ -32,15 +36,15 @@ function useHiveWithLatest(hive) {
     try { return measurementAlertStatus(latest, DEFAULT_THRESHOLDS) ?? 'unknown' }
     catch { return 'unknown' }
   }, [latest])
-  return { latest, status }
+  const gps = useMemo(() => resolveGps(hive, latest), [hive, latest])
+  return { latest, status, gps }
 }
 
 // ── Hive list row ─────────────────────────────────────────────────────────────
 
-const HiveRow = ({ hive, selected, onClick, status, latest }) => {
+const HiveRow = ({ hive, selected, onClick, status, latest, gps }) => {
   const cfg      = getStatusCfg(status)
   const doorOpen = latest?.door_open ?? null
-  const gps      = hasGps(hive)
 
   return (
     <button
@@ -64,7 +68,7 @@ const HiveRow = ({ hive, selected, onClick, status, latest }) => {
       <div className="flex items-center justify-between gap-2 pl-4">
         {gps
           ? <span className="text-[10px] text-gray-400 font-mono">
-              {hive.gps_lat.toFixed(4)}, {hive.gps_lng.toFixed(4)}
+              {gps.lat.toFixed(4)}, {gps.lng.toFixed(4)}
             </span>
           : <span className="text-[10px] text-gray-300 italic">Coordonnées GPS manquantes</span>
         }
@@ -84,40 +88,53 @@ const HiveRow = ({ hive, selected, onClick, status, latest }) => {
   )
 }
 
-// ── Wrapper: hook per hive ────────────────────────────────────────────────────
+// ── Wrapper: hook per hive, reports up ───────────────────────────────────────
 
 const HiveRowWithStatus = ({ hive, selected, onSelect, onStatus }) => {
-  const { latest, status } = useHiveWithLatest(hive)
-  useEffect(() => { onStatus(hive.id, status, latest) }, [hive.id, status, latest, onStatus])
-  return <HiveRow hive={hive} selected={selected} onClick={onSelect} status={status} latest={latest} />
+  const { latest, status, gps } = useHiveWithLatest(hive)
+
+  useEffect(() => {
+    onStatus(hive.id, status, latest, gps)
+  }, [hive.id, status, latest, gps, onStatus])
+
+  return (
+    <HiveRow
+      hive={hive}
+      selected={selected}
+      onClick={onSelect}
+      status={status}
+      latest={latest}
+      gps={gps}
+    />
+  )
 }
 
 // ── Map helpers ───────────────────────────────────────────────────────────────
 
-const FlyToHive = ({ hive }) => {
+const FlyToHive = ({ gps }) => {
   const map = useMap()
   useEffect(() => {
-    if (hasGps(hive)) map.flyTo([hive.gps_lat, hive.gps_lng], 15, { duration: 1 })
-  }, [hive, map])
+    if (gps) map.flyTo([gps.lat, gps.lng], 15, { duration: 1 })
+  }, [gps, map])
   return null
 }
 
-const HiveMarkers = ({ hivesWithStatus, selected, onSelect }) => (
+const HiveMarkers = ({ hivesWithStatus, selectedId, onSelect }) => (
   <>
-    {hivesWithStatus.map(({ hive, status }) => {
-      if (!hasGps(hive)) return null
+    {hivesWithStatus.map(({ hive, status, gps }) => {
+      if (!gps) return null
       const cfg        = getStatusCfg(status)
-      const isSelected = selected?.id === hive.id
+      const isSelected = selectedId === hive.id
       return (
         <CircleMarker
           key={hive.id}
-          center={[hive.gps_lat, hive.gps_lng]}
+          center={[gps.lat, gps.lng]}
           radius={isSelected ? 14 : 10}
           pathOptions={{
             color: '#fff', weight: isSelected ? 3 : 2,
             fillColor: cfg.color, fillOpacity: isSelected ? 1 : 0.85,
           }}
-          eventHandlers={{ click: () => onSelect(hive) }}
+          eventHandlers={{ click: () => onSelect(hive.id) }}
         >
           <Tooltip permanent={isSelected} direction="top" offset={[0, -12]}>
             <span style={{ fontSize: 12, fontWeight: 700 }}>{hive.name?.toUpperCase()}</span>
@@ -142,35 +159,31 @@ const Legend = () => (
   </div>
 )
 
-// ── No-GPS empty state overlaid on map ────────────────────────────────────────
-
-const NoGpsOverlay = ({ total, withGps }) => {
-  if (withGps > 0) return null
+const NoGpsOverlay = ({ total, withGps, loading }) => {
+  if (loading || withGps > 0) return null
   return (
     <div className="absolute inset-0 z-[999] flex items-center justify-center pointer-events-none">
       <div className="bg-white/95 rounded-2xl shadow-xl border border-gray-100 px-8 py-6 text-center max-w-xs pointer-events-auto">
         <MapPinOff className="w-10 h-10 text-gray-200 mx-auto mb-3" />
         <p className="text-sm font-semibold text-gray-700 mb-1">Aucune coordonnée GPS</p>
         <p className="text-xs text-gray-400 leading-relaxed">
-          {total} ruche{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''} mais aucune n'a de
-          coordonnées GPS enregistrées. Assignez des coordonnées via le backend pour les
-          afficher sur la carte.
+          {total} ruche{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}, mais les mesures
+          GPS ne sont pas encore reçues. Les coordonnées apparaîtront automatiquement après
+          la prochaine transmission du simulateur.
         </p>
       </div>
     </div>
   )
 }
 
-// ── Summary bar ───────────────────────────────────────────────────────────────
-
 const SummaryBar = ({ hivesWithStatus }) => {
   const total   = hivesWithStatus.length
   const urgent  = hivesWithStatus.filter(h => ['urgente','urgent'].includes(h.status)).length
   const open    = hivesWithStatus.filter(h => h.latest?.door_open === true).length
-  const withGps = hivesWithStatus.filter(h => hasGps(h.hive)).length
+  const withGps = hivesWithStatus.filter(h => h.gps != null).length
 
   return (
-    <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center gap-4 flex-wrap">
+    <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center gap-4">
       <div className="text-center">
         <p className="text-base font-bold text-gray-800">{total}</p>
         <p className="text-[10px] text-gray-400 uppercase tracking-wide">Total</p>
@@ -185,8 +198,8 @@ const SummaryBar = ({ hivesWithStatus }) => {
         <p className="text-base font-bold text-red-500">{urgent}</p>
         <p className="text-[10px] text-gray-400 uppercase tracking-wide">Urgent</p>
       </div>
-      <div className="w-px h-7 bg-gray-200 hidden sm:block" />
-      <div className="hidden sm:block text-center">
+      <div className="w-px h-7 bg-gray-200" />
+      <div className="text-center">
         <p className="text-base font-bold text-green-500">{withGps}</p>
         <p className="text-[10px] text-gray-400 uppercase tracking-wide">GPS</p>
       </div>
@@ -204,13 +217,15 @@ const GestionMapPage = () => {
 
   const [search,    setSearch]    = useState('')
   const [filter,    setFilter]    = useState('Toutes')
-  const [selected,  setSelected]  = useState(null)
+  const [selectedId, setSelectedId] = useState(null)
   const [statusMap, setStatusMap] = useState({})
 
-  const updateStatus = useCallback((hiveId, status, latest) => {
+  // statusMap stores { status, latest, gps } per hive id
+  const updateStatus = useCallback((hiveId, status, latest, gps) => {
     setStatusMap(prev => {
-      if (prev[hiveId]?.status === status && prev[hiveId]?.latest === latest) return prev
-      return { ...prev, [hiveId]: { status, latest } }
+      const cur = prev[hiveId]
+      if (cur?.status === status && cur?.latest === latest && cur?.gps === gps) return prev
+      return { ...prev, [hiveId]: { status, latest, gps } }
     })
   }, [])
 
@@ -219,6 +234,7 @@ const GestionMapPage = () => {
       hive  : h,
       status: statusMap[h.id]?.status ?? 'unknown',
       latest: statusMap[h.id]?.latest ?? null,
+      gps   : statusMap[h.id]?.gps   ?? null,
     })),
     [hives, statusMap]
   )
@@ -233,16 +249,22 @@ const GestionMapPage = () => {
     })
   }, [hivesWithStatus, search, filter])
 
-  const gpsCount = useMemo(() => hives.filter(hasGps).length, [hives])
+  const gpsCount = hivesWithStatus.filter(h => h.gps != null).length
+
+  // Selected hive full object + its gps
+  const selectedEntry = hivesWithStatus.find(h => h.hive.id === selectedId)
 
   const mapCenter = useMemo(() => {
-    const geo = hives.filter(hasGps)
-    if (!geo.length) return [30.5, -8.0]
+    const geo = hivesWithStatus.filter(h => h.gps != null)
+    if (!geo.length) return [35.689, -0.641] // fallback near simulator coordinates
     return [
-      geo.reduce((s, h) => s + h.gps_lat, 0) / geo.length,
-      geo.reduce((s, h) => s + h.gps_lng, 0) / geo.length,
+      geo.reduce((s, h) => s + h.gps.lat, 0) / geo.length,
+      geo.reduce((s, h) => s + h.gps.lng, 0) / geo.length,
     ]
-  }, [hives])
+  }, [hivesWithStatus])
+
+  // Loading state for overlay — true until at least one hive has loaded its latest
+  const latestLoaded = Object.keys(statusMap).length > 0
 
   return (
     <div className="flex h-full overflow-hidden bg-[#FDFAF4]">
@@ -254,7 +276,7 @@ const GestionMapPage = () => {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-bold text-gray-900">Les ruches</h2>
             <div className="flex items-center gap-1.5">
-              {gpsCount === 0 && !isLoading && (
+              {latestLoaded && gpsCount === 0 && (
                 <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
                   GPS manquant
                 </span>
@@ -306,8 +328,8 @@ const GestionMapPage = () => {
                   <HiveRowWithStatus
                     key={hive.id}
                     hive={hive}
-                    selected={selected?.id === hive.id}
-                    onSelect={() => setSelected(prev => prev?.id === hive.id ? null : hive)}
+                    selected={selectedId === hive.id}
+                    onSelect={() => setSelectedId(prev => prev === hive.id ? null : hive.id)}
                     onStatus={updateStatus}
                   />
                 ))
@@ -327,46 +349,54 @@ const GestionMapPage = () => {
             attribution="Tiles &copy; Esri"
             maxZoom={19}
           />
-          <HiveMarkers hivesWithStatus={hivesWithStatus} selected={selected} onSelect={setSelected} />
-          {selected && hasGps(selected) && <FlyToHive hive={selected} />}
+          <HiveMarkers
+            hivesWithStatus={hivesWithStatus}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+          />
+          {selectedEntry?.gps && <FlyToHive gps={selectedEntry.gps} />}
           <Legend />
         </MapContainer>
 
-        {/* No-GPS overlay */}
-        <NoGpsOverlay total={hives.length} withGps={gpsCount} />
+        {/* No-GPS overlay — only shown after latest data has loaded */}
+        <NoGpsOverlay
+          total={hives.length}
+          withGps={gpsCount}
+          loading={!latestLoaded}
+        />
 
         {/* Selected hive card */}
-        {selected && (
+        {selectedEntry && (
           <div className="absolute bottom-4 left-4 z-[1000] bg-white rounded-2xl shadow-xl border border-gray-100 p-4 min-w-[220px] max-w-[280px]">
             <div className="flex items-start justify-between gap-2 mb-1.5">
-              <h3 className="font-bold text-gray-900 text-sm">{selected.name?.toUpperCase()}</h3>
+              <h3 className="font-bold text-gray-900 text-sm">{selectedEntry.hive.name?.toUpperCase()}</h3>
               <button
-                onClick={() => navigate(`/apiculteurs/${apiculteurId}/gestion/${selected.id}`)}
+                onClick={() => navigate(`/apiculteurs/${apiculteurId}/gestion/${selectedEntry.hive.id}`)}
                 className="flex items-center gap-0.5 text-[11px] font-semibold text-amber-600 hover:text-amber-700 transition-colors flex-shrink-0"
               >
                 Détails <ChevronRight className="w-3 h-3" />
               </button>
             </div>
 
-            {hasGps(selected)
+            {selectedEntry.gps
               ? <p className="text-[10px] text-gray-400 font-mono mb-1">
-                  {selected.gps_lat.toFixed(5)}, {selected.gps_lng.toFixed(5)}
+                  {selectedEntry.gps.lat.toFixed(5)}, {selectedEntry.gps.lng.toFixed(5)}
                 </p>
               : <div className="flex items-center gap-1.5 mb-1">
                   <MapPinOff className="w-3 h-3 text-gray-300" />
-                  <p className="text-[10px] text-gray-400">Coordonnées GPS manquantes</p>
+                  <p className="text-[10px] text-gray-400">En attente de mesure GPS</p>
                 </div>
             }
 
-            {selected.location_name && (
+            {selectedEntry.hive.location_name && (
               <div className="flex items-center gap-1.5">
                 <Navigation className="w-3 h-3 text-gray-300 flex-shrink-0" />
-                <span className="text-[10px] text-gray-400 truncate">{selected.location_name}</span>
+                <span className="text-[10px] text-gray-400 truncate">{selectedEntry.hive.location_name}</span>
               </div>
             )}
 
             <button
-              onClick={() => setSelected(null)}
+              onClick={() => setSelectedId(null)}
               className="absolute top-2 right-3 text-gray-300 hover:text-gray-500 text-lg leading-none transition"
             >×</button>
           </div>
