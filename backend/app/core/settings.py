@@ -1,4 +1,3 @@
-# backend/app/core/settings.py
 from __future__ import annotations
 
 import os
@@ -52,12 +51,14 @@ class Settings(BaseModel):
     ]
 
     # Set to "true" in Railway to also allow ALL *.vercel.app preview URLs
-    # This avoids having to update ALLOWED_ORIGINS on every Vercel deployment
     allow_vercel_previews: bool = (
         os.getenv("ALLOW_VERCEL_PREVIEWS", "false").lower() == "true"
     )
 
     sse_poll_interval: float = float(os.getenv("SSE_POLL_INTERVAL", "2.0"))
 
+    kafka_brokers: str  = os.getenv("KAFKA_BROKERS", "kafka:9092")
+    kafka_topic:   str  = os.getenv("KAFKA_TOPIC",   "chirpstack")
+    kafka_enabled: bool = os.getenv("KAFKA_ENABLED", "true").lower() == "true"
 
 settings = Settings()

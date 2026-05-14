@@ -1,29 +1,3 @@
-"""
-app/services/uplink.py
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Shared uplink processing — called by both the Kafka consumer (primary path)
-and the HTTP webhook route (fallback).
-
-Field normalisation
-───────────────────
-Real ESP32 device (JS codec, from payload_reference.pdf + single-log.json)
-vs simulator/legacy webhook (already normalised).
-
-  Device field      Unit          → Internal field    Transform
-  ─────────────     ────          ─────────────────   ─────────────────────────
-  temperature       °C            temperature_c       direct
-  humidity          %             humidity_pct        direct
-  mic_analog        0-4095 ADC    sound_level         × (100/4095), rounded
-  door              "OUVERTE"|…   door_open           == "OUVERTE"
-  weight_g          grams         weight_kg           ÷ 1000
-  latitude          deg           gps_lat             0.0 → None (no GPS fix)
-  longitude         deg           gps_lng             0.0 → None
-  soc_pct           0-100 %       battery_v (V)       linear: 0%=10.0V 100%=15.1V
-
-Simulator fields (temperature_c, humidity_pct, …) pass through unchanged
-when present so both paths share this single normaliser.
-"""
-
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -38,11 +12,9 @@ from app.core.payload_v1 import decode_payload_v1_from_base64
 from app.models.models import Device, Hive, Measurement
 from app.ai.predict import predict as ai_predict
 
-# ── Constants ─────────────────────────────────────────────────────────────────
 
 DEFAULT_APICULTEUR_ID = 1
 
-# 4S Li-ion pack voltage range (payload_reference.pdf: 100%=15.1V, 0%=10.0V)
 _BATT_V_MIN = 10.0
 _BATT_V_MAX = 15.1
 
@@ -85,8 +57,6 @@ def _normalize_object(obj: dict[str, Any]) -> dict[str, Any]:
     )
 
     # ── sound level ──────────────────────────────────────────────────────────
-    # Simulator delivers 0-100 directly.
-    # Real device delivers raw 12-bit ADC in mic_analog → rescale to 0-100.
     sound_level: Optional[int]
     if obj.get("sound_level") is not None:
         sound_level = int(obj["sound_level"])
@@ -96,7 +66,6 @@ def _normalize_object(obj: dict[str, Any]) -> dict[str, Any]:
         sound_level = None
 
     # ── door open ────────────────────────────────────────────────────────────
-    # Simulator: bool.  Real device: "OUVERTE" | "FERMEE".
     door_open: Optional[bool]
     if obj.get("door_open") is not None:
         door_open = bool(obj["door_open"])
@@ -106,8 +75,6 @@ def _normalize_object(obj: dict[str, Any]) -> dict[str, Any]:
         door_open = None
 
     # ── weight ───────────────────────────────────────────────────────────────
-    # Simulator: kg.  Real device: grams (weight_g).
-    # payload_reference.pdf: "< 2 g = 0" → treat tiny values as zero, not None.
     weight_kg: Optional[float]
     if obj.get("weight_kg") is not None:
         weight_kg = float(obj["weight_kg"])
@@ -117,7 +84,6 @@ def _normalize_object(obj: dict[str, Any]) -> dict[str, Any]:
         weight_kg = None
 
     # ── GPS ───────────────────────────────────────────────────────────────────
-    # Real device sends 0.0 when there is no GPS fix — store as None.
     gps_lat: Optional[float] = (
         obj.get("gps_lat")
         if obj.get("gps_lat") is not None
@@ -134,8 +100,6 @@ def _normalize_object(obj: dict[str, Any]) -> dict[str, Any]:
         gps_lng = None
 
     # ── battery ───────────────────────────────────────────────────────────────
-    # Simulator: already in volts.
-    # Real device: soc_pct (0-100 %) → convert to pack voltage.
     battery_v: Optional[float]
     if obj.get("battery_v") is not None:
         battery_v = float(obj["battery_v"])
@@ -243,10 +207,8 @@ async def process_uplink(payload: dict[str, Any], session: AsyncSession) -> dict
     raw_obj: Optional[dict[str, Any]] = payload.get("object")
 
     if raw_obj is not None:
-        # ChirpStack JS codec decoded the frame → normalise field names
         decoded = _normalize_object(raw_obj)
     else:
-        # No codec on ChirpStack side → decode raw base64 binary frame
         data_b64 = payload.get("data")
         if not data_b64:
             raise HTTPException(
