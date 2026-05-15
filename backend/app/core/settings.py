@@ -57,8 +57,16 @@ class Settings(BaseModel):
 
     sse_poll_interval: float = float(os.getenv("SSE_POLL_INTERVAL", "2.0"))
 
-    kafka_brokers: str  = os.getenv("KAFKA_BROKERS", "kafka:9092")
-    kafka_topic:   str  = os.getenv("KAFKA_TOPIC",   "chirpstack")
+    kafka_brokers: list[str] = [
+        b.strip()
+        for b in os.getenv(
+            "KAFKA_BROKERS",
+            "broker.agri40.ma:19092,broker.agri40.ma:29092,broker.agri40.ma:39092",
+        ).split(",")
+        if b.strip()
+    ]
+    kafka_topic:   str  = os.getenv("KAFKA_TOPIC",   "chirpstack.events")
     kafka_enabled: bool = os.getenv("KAFKA_ENABLED", "true").lower() == "true"
+
 
 settings = Settings()
