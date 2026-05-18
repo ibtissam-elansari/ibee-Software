@@ -60,8 +60,8 @@ def _normalize_object(obj: dict[str, Any]) -> dict[str, Any]:
     sound_level: Optional[int]
     if obj.get("sound_level") is not None:
         sound_level = int(obj["sound_level"])
-    elif obj.get("mic_analog") is not None:
-        sound_level = round(int(obj["mic_analog"]) / _MIC_ADC_MAX * 100)
+    elif obj.get("micAnalog") is not None:
+        sound_level = round(int(obj["micAnalog"]) / _MIC_ADC_MAX * 100)
     else:
         sound_level = None
 
@@ -78,8 +78,8 @@ def _normalize_object(obj: dict[str, Any]) -> dict[str, Any]:
     weight_kg: Optional[float]
     if obj.get("weight_kg") is not None:
         weight_kg = float(obj["weight_kg"])
-    elif obj.get("weight_g") is not None:
-        weight_kg = round(float(obj["weight_g"]) / 1000.0, 6)
+    elif obj.get("weightKg") is not None:
+        weight_kg = round(float(obj["weightKg"]) / 1000.0, 6)
     else:
         weight_kg = None
 
