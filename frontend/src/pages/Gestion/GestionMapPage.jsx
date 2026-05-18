@@ -345,9 +345,9 @@ const GestionMapPage = () => {
       <div className="flex-1 relative overflow-hidden">
         <MapContainer center={mapCenter} zoom={13} style={{ width: '100%', height: '100%' }}>
           <TileLayer
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            attribution="Tiles &copy; Esri"
-            maxZoom={19}
+            url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+            attribution="&copy; Google"
+            maxZoom={20}
           />
           <HiveMarkers
             hivesWithStatus={hivesWithStatus}
