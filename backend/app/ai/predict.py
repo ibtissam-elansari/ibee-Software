@@ -324,19 +324,8 @@ def predict(dev_eui: str, decoded: dict,
 
 
 def warm_up() -> None:
-    """
-    Call once at FastAPI startup to pre-load models.
-    Add to main.py lifespan:
-
-        from app.ai.predict import warm_up
-        @asynccontextmanager
-        async def lifespan(app):
-            warm_up()
-            yield
-        app = FastAPI(lifespan=lifespan)
-    """
     try:
         _load_models()
         logger.info("IBEE AI warm-up complete.")
-    except FileNotFoundError as e:
+    except Exception as e:          # ← was: FileNotFoundError
         logger.warning("IBEE AI warm-up skipped: %s", e)
