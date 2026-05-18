@@ -11,7 +11,8 @@ from app.api.routes_hives import update_sse_cache
 from app.core.payload_v1 import decode_payload_v1_from_base64
 from app.models.models import Device, Hive, Measurement
 from app.ai.predict import predict as ai_predict
-
+import logging
+logger = logging.getLogger(__name__)
 
 DEFAULT_APICULTEUR_ID = 1
 
@@ -258,6 +259,7 @@ async def process_uplink(payload: dict[str, Any], session: AsyncSession) -> dict
     session.add(m)
     await session.commit()
     await session.refresh(m)
+    logger.info("✅ Measurement stored: id=%s device=%s", m.id, device.dev_eui)
 
     # ── Push to SSE stream ────────────────────────────────────────────────────
     sse_payload = {
