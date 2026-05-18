@@ -79,7 +79,7 @@ def _normalize_object(obj: dict[str, Any]) -> dict[str, Any]:
     if obj.get("weight_kg") is not None:
         weight_kg = float(obj["weight_kg"])
     elif obj.get("weightKg") is not None:
-        weight_kg = round(float(obj["weightKg"]) / 1000.0, 6)
+        weight_kg = float(obj["weightKg"])
     else:
         weight_kg = None
 
