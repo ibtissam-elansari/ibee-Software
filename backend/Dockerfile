@@ -13,11 +13,12 @@ RUN pip install --no-cache-dir -U pip \
 COPY app /app/app
 COPY start.sh /app/start.sh
 
-# Download classifier.pkl from GitHub Releases (too large for git)
+# Download AI models from GitHub Releases (too large or problematic for git)
 RUN apt-get update && apt-get install -y --no-install-recommends wget \
-  && wget -q \
-     "https://github.com/ibtissam-elansari/ibee-Software/releases/download/v1.0-models/classifier.pkl" \
+  && wget -q "https://github.com/ibtissam-elansari/ibee-Software/releases/download/v1.0-models/classifier.pkl" \
      -O /app/app/ai/classifier.pkl \
+  && wget -q "https://github.com/ibtissam-elansari/ibee-Software/releases/download/v1.0-models/isolation_forest.pkl" \
+     -O /app/app/ai/isolation_forest.pkl \
   && apt-get purge -y wget && rm -rf /var/lib/apt/lists/*
 
 RUN chmod +x /app/start.sh
