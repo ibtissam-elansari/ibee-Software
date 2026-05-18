@@ -76,7 +76,7 @@ ibee-ai/data/processed/
 
 # Optional: ignore large raw datasets
 # Uncomment if you don't want datasets in git
-# ibee-ai/data/raw/
+ibee-ai/data/raw/
 
 # =========================
 # Docker
@@ -95,6 +95,3 @@ ibee-ai/data/processed/
 tmp/
 temp/
 *.tmp
-
-
-*.pkl
