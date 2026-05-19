@@ -1,13 +1,18 @@
-// frontend/src/hooks/userAlertStats
-
+// hooks/useAlertStats.js
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getAlertLog, getDailyAlertCounts, getWeeklyUrgentCounts } from '../api/alertStats'
+import {
+  getAlertLog,
+  getDailyAlertCounts,
+  getWeeklyUrgentCounts,
+  getSensorTimeline,
+} from '../api/alertStats'
 
-const todayStr = () => new Date().toLocaleDateString('en-CA')
+// ── Constants ──────────────────────────────────────────────────────────────────
 
-const RANGE_DAYS        = { '7j': 7, '15j': 15, 'Mois': 30 }
-const WEEKLY_RANGE_DAYS = { '7j': 7, '15j': 15, 'Mois': 30 }
+const FIFTEEN_MIN = 15 * 60 * 1000
+const todayStr    = () => new Date().toLocaleDateString('en-CA')
+const RANGE_DAYS  = { '7j': 7, '15j': 15, 'Mois': 30 }
 
 export const ALERT_TYPES = ['security', 'temperature', 'humidity', 'battery', 'sound']
 
@@ -27,21 +32,30 @@ export const TYPE_LABELS = {
   sound      : 'Sonore',
 }
 
-export function useAlertStats(apiculteurId) {
-  // ── Date range ─────────────────────────────────────────────────────────────
-  const [range,       setRange]       = useState('7j')
-  const [startDate,   setStartDate]   = useState('')
-  const [endDate,     setEndDate]     = useState('')
-  const [weeklyRange, setWeeklyRange] = useState('7j')
+/** Threshold bands for each continuous sensor, used by chart components. */
+export const SENSOR_THRESHOLDS = {
+  temperature: { attention: 35, urgent: 38,  unit: '°C', min: 15, max: 45 },
+  humidity   : { attention: 70, urgent: 80,  unit: '%',  min: 30, max: 95 },
+  battery    : { low: 3.6,                   unit: 'V',  min: 3.0, max: 4.2 },
+  sound      : { attention: 70, urgent: 85,  unit: 'dB', min: 0,  max: 110 },
+}
 
-  // ── Hive filter ────────────────────────────────────────────────────────────
+// ── Hook ───────────────────────────────────────────────────────────────────────
+
+export function useAlertStats(apiculteurId) {
+  // Date range controls
+  const [range,     setRange]     = useState('7j')
+  const [startDate, setStartDate] = useState('')
+  const [endDate,   setEndDate]   = useState('')
+
+  // Hive filter
   const [selectedHiveId, setSelectedHiveId] = useState(null)
 
-  // ── Alert type / importance filters ───────────────────────────────────────
+  // Alert log filters
   const [typeFilter, setTypeFilter] = useState('')
   const [impFilter,  setImpFilter]  = useState('')
 
-  // ── Build shared API dates ─────────────────────────────────────────────────
+  // ── Build API date range ─────────────────────────────────────────────────────
   const { apiStart, apiEnd } = useMemo(() => {
     if (startDate || endDate) {
       return {
@@ -56,39 +70,23 @@ export function useAlertStats(apiculteurId) {
     return { apiStart: start.toISOString(), apiEnd: now.toISOString() }
   }, [range, startDate, endDate])
 
-  // ── Weekly range API dates ─────────────────────────────────────────────────
-  const { weeklyApiStart, weeklyApiEnd, weekLabel } = useMemo(() => {
-    const now   = new Date()
-    const days  = WEEKLY_RANGE_DAYS[weeklyRange] ?? 7
-    const start = new Date(now)
-    start.setDate(start.getDate() - days)
-    const fmt = (d) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-    return {
-      weeklyApiStart : start.toISOString(),
-      weeklyApiEnd   : now.toISOString(),
-      weekLabel      : `${fmt(start)} – ${fmt(now)}`,
-    }
-  }, [weeklyRange])
-
-  // ── Shared scope params passed to every query ──────────────────────────────
-  const scopeParams = {
+  // Shared scope params
+  const scopeParams = useMemo(() => ({
     apiculteur_id: apiculteurId   || undefined,
     hive_id      : selectedHiveId || undefined,
-  }
+  }), [apiculteurId, selectedHiveId])
 
+  const rangeParams = useMemo(() => ({
+    ...scopeParams,
+    start: apiStart,
+    end  : apiEnd,
+  }), [scopeParams, apiStart, apiEnd])
 
-  // ── Alert log ──────────────────────────────────────────────────────────────
-
-  const FIFTEEN_MIN = 15 * 60 * 1000
-  const FIVE_MIN    = 5 * 60 * 1000
-
-  // Alert log
+  // ── Alert log ────────────────────────────────────────────────────────────────
   const logQuery = useQuery({
-    queryKey       : ['alert-log', apiculteurId, selectedHiveId, apiStart, apiEnd, typeFilter, impFilter],
-    queryFn     : () => getAlertLog({
-      ...scopeParams,
-      start     : apiStart,
-      end       : apiEnd,
+    queryKey: ['alert-log', apiculteurId, selectedHiveId, apiStart, apiEnd, typeFilter, impFilter],
+    queryFn : () => getAlertLog({
+      ...rangeParams,
       type      : typeFilter || undefined,
       importance: impFilter  || undefined,
     }),
@@ -96,101 +94,138 @@ export function useAlertStats(apiculteurId) {
     refetchInterval: FIFTEEN_MIN,
   })
 
-  // Daily timeline — historical aggregation, no need to auto-refetch
+  // ── Daily totals (for volume timeline) ──────────────────────────────────────
   const dailyQuery = useQuery({
     queryKey : ['alert-daily', apiculteurId, selectedHiveId, apiStart, apiEnd],
-    queryFn  : () => getDailyAlertCounts({ ...scopeParams, start: apiStart, end: apiEnd }),
+    queryFn  : () => getDailyAlertCounts(rangeParams),
     staleTime: FIFTEEN_MIN,
-    // refetchInterval omitted — data doesn't change until the next uplink
   })
 
-  // Weekly — slightly fresher since it covers an active window
-  const weeklyQuery = useQuery({
-    queryKey       : ['alert-weekly', apiculteurId, selectedHiveId, weeklyApiStart, weeklyApiEnd],
-    queryFn        : () => getWeeklyUrgentCounts(weeklyApiStart, weeklyApiEnd, apiculteurId, selectedHiveId),
-    staleTime      : FIFTEEN_MIN,
-    refetchInterval: FIFTEEN_MIN,
+  // ── Per-sensor timelines ─────────────────────────────────────────────────────
+  const makeSensorQuery = (type) => ({
+    queryKey: ['sensor-timeline', type, apiculteurId, selectedHiveId, apiStart, apiEnd],
+    queryFn : () => getSensorTimeline(type, rangeParams),
+    staleTime: FIFTEEN_MIN,
   })
 
-  // ── Timeline data with per-type breakdown ──────────────────────────────────
+  const tempQuery     = useQuery(makeSensorQuery('temperature'))
+  const humQuery      = useQuery(makeSensorQuery('humidity'))
+  const batteryQuery  = useQuery(makeSensorQuery('battery'))
+  const soundQuery    = useQuery(makeSensorQuery('sound'))
+  const securityQuery = useQuery(makeSensorQuery('security'))
+
+  // ── KPIs derived from log data ───────────────────────────────────────────────
+  const kpis = useMemo(() => {
+    const alerts = logQuery.data ?? []
+    const today  = todayStr()
+
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toLocaleDateString('en-CA')
+
+    const lastWeekStart = new Date()
+    lastWeekStart.setDate(lastWeekStart.getDate() - 14)
+    const lastWeekEnd = new Date()
+    lastWeekEnd.setDate(lastWeekEnd.getDate() - 7)
+
+    const totalToday      = alerts.filter(a => new Date(a.ts).toLocaleDateString('en-CA') === today).length
+    const totalYesterday  = alerts.filter(a => new Date(a.ts).toLocaleDateString('en-CA') === yesterdayStr).length
+    const totalPeriod     = alerts.length
+    const urgentPeriod    = alerts.filter(a => a.importance === 'urgente').length
+
+    // Hive with most alerts
+    const hiveCount = {}
+    alerts.forEach(a => { hiveCount[a.hive_name] = (hiveCount[a.hive_name] ?? 0) + 1 })
+    const topHive = Object.entries(hiveCount).sort((a, b) => b[1] - a[1])[0]
+
+    // Per-hive breakdown for bar chart
+    const hiveBreakdown = Object.entries(hiveCount)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+
+    // Per-type breakdown
+    const typeCount = {}
+    alerts.forEach(a => { typeCount[a.type] = (typeCount[a.type] ?? 0) + 1 })
+    const typeBreakdown = ALERT_TYPES.map(t => ({ type: t, count: typeCount[t] ?? 0 }))
+
+    return {
+      totalToday,
+      deltaToday  : totalToday - totalYesterday,
+      totalPeriod,
+      urgentPeriod,
+      urgentPct   : totalPeriod > 0 ? Math.round((urgentPeriod / totalPeriod) * 100) : 0,
+      topHiveName : topHive?.[0] ?? '—',
+      topHiveCount: topHive?.[1] ?? 0,
+      hiveBreakdown,
+      typeBreakdown,
+    }
+  }, [logQuery.data])
+
+  // ── Timeline data (volume, stacked by importance) ────────────────────────────
   const timelineData = useMemo(() => {
-    const raw       = dailyQuery.data ?? []
-    const logAlerts = logQuery.data   ?? []
+    const raw     = dailyQuery.data ?? []
+    const alerts  = logQuery.data   ?? []
 
+    // Build urgente / attention counts per date from log
     const byDate = {}
-    logAlerts.forEach(alert => {
-      const day = new Date(alert.ts).toLocaleDateString('en-CA')
-      if (!byDate[day]) byDate[day] = {}
-      byDate[day][alert.type] = (byDate[day][alert.type] ?? 0) + 1
+    alerts.forEach(a => {
+      const day = new Date(a.ts).toLocaleDateString('en-CA')
+      if (!byDate[day]) byDate[day] = { urgente: 0, attention: 0 }
+      byDate[day][a.importance] = (byDate[day][a.importance] ?? 0) + 1
     })
 
-    return raw.map(d => {
-      const breakdown   = byDate[d.date] ?? {}
-      const total       = d.count
-      const percentages = Object.fromEntries(
-        ALERT_TYPES.map(t => [
-          t,
-          total > 0 ? Math.round(((breakdown[t] ?? 0) / total) * 100) : 0,
-        ])
-      )
-      return {
-        date: d.date.slice(5).replace('-', '/'),
-        count: d.count,
-        breakdown,
-        percentages,
-      }
-    })
+    return raw.map(d => ({
+      date     : d.date.slice(5).replace('-', '/'),
+      total    : d.count,
+      urgente  : byDate[d.date]?.urgente   ?? 0,
+      attention: byDate[d.date]?.attention ?? 0,
+    }))
   }, [dailyQuery.data, logQuery.data])
 
-  // ── Weekly stacked bar data ────────────────────────────────────────────────
-  const weeklyData = useMemo(() => {
-    const base      = weeklyQuery.data ?? []
-    const logAlerts = logQuery.data    ?? []
-
-    const byDay = {}
-    logAlerts.forEach(alert => {
-      if (alert.importance !== 'urgente') return
-      const dt  = new Date(alert.ts)
-      const day = ['D', 'L', 'M', 'Mer', 'J', 'V', 'S'][dt.getDay()]
-      if (!byDay[day]) byDay[day] = {}
-      byDay[day][alert.type] = (byDay[day][alert.type] ?? 0) + 1
-    })
-
-    return base.map(({ day, count }) => ({
-      day,
-      count,
-      ...Object.fromEntries(ALERT_TYPES.map(t => [t, byDay[day]?.[t] ?? 0])),
+  // ── Format sensor timelines for chart consumption ────────────────────────────
+  const formatSensorData = (queryData) =>
+    (queryData ?? []).map(d => ({
+      date : d.date.slice(5).replace('-', '/'),
+      min  : d.min,
+      max  : d.max,
+      avg  : d.avg,
+      count: d.count,
     }))
-  }, [weeklyQuery.data, logQuery.data])
 
   return {
-    // Date range
+    // Controls
     range, setRange,
     startDate, setStartDate,
     endDate,   setEndDate,
-
-    // Hive filter
     selectedHiveId, setSelectedHiveId,
+    typeFilter, setTypeFilter,
+    impFilter,  setImpFilter,
 
-    // Timeline
+    // KPIs
+    kpis,
+
+    // Volume timeline
     timelineData,
     timelineLoading: dailyQuery.isLoading,
 
-    // Weekly
-    weeklyRange, setWeeklyRange,
-    weeklyData,
-    weeklyLoading: weeklyQuery.isLoading,
-    weekLabel,
+    // Per-sensor timelines
+    sensorData: {
+      temperature: formatSensorData(tempQuery.data),
+      humidity   : formatSensorData(humQuery.data),
+      battery    : formatSensorData(batteryQuery.data),
+      sound      : formatSensorData(soundQuery.data),
+      security   : formatSensorData(securityQuery.data),
+    },
+    sensorLoading: {
+      temperature: tempQuery.isLoading,
+      humidity   : humQuery.isLoading,
+      battery    : batteryQuery.isLoading,
+      sound      : soundQuery.isLoading,
+      security   : securityQuery.isLoading,
+    },
 
     // Alert log
     alerts       : logQuery.data ?? [],
     alertsLoading: logQuery.isLoading,
-    totalToday   : (logQuery.data ?? []).filter(a =>
-      new Date(a.ts).toLocaleDateString('en-CA') === todayStr()
-    ).length,
-
-    // Filters
-    typeFilter, setTypeFilter,
-    impFilter,  setImpFilter,
   }
 }
