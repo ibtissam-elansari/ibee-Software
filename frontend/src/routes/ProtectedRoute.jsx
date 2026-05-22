@@ -1,14 +1,20 @@
+// src/routes/ProtectedRoute.jsx
 import React from 'react';
 import { Navigate, Outlet, useParams } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 
 const ProtectedRoute = ({ allowedRoles }) => {
-  const user = useAuthStore((s) => s.user);
+  const user            = useAuthStore((s) => s.user);
   const { apiculteurId } = useParams();
 
-  // Not authenticated
+  // Not authenticated → login
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Account created but not yet approved by superuser → holding page
+  if (user.is_pending) {
+    return <Navigate to="/pending-approval" replace />;
   }
 
   // Role not allowed
@@ -23,10 +29,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
     user.apiculteur_id !== null &&
     Number(apiculteurId) !== user.apiculteur_id
   ) {
-    // Silently redirect them to their own coop — don't show a 403 page
-    return (
-      <Navigate to={`/apiculteurs/${user.apiculteur_id}/dashboard`} replace />
-    );
+    return <Navigate to={`/apiculteurs/${user.apiculteur_id}/dashboard`} replace />;
   }
 
   return <Outlet />;
