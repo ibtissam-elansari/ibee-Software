@@ -1,3 +1,4 @@
+# backend/app/core/dependencies.py
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.security import decode_token
@@ -15,15 +16,26 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
     try:
-        return decode_token(credentials.credentials)
+        payload = decode_token(credentials.credentials)
     except Exception:
         raise HTTPException(status_code=401, detail="Token invalide ou expiré")
+
+    return {
+        "user_id"      : payload["user_id"],
+        "role"         : payload["role"],
+        "email"        : payload["sub"],
+        "apiculteur_id": payload.get("apiculteur_id"),
+        "is_pending"   : payload.get("is_pending", False),   # ← NEW
+    }
 
 
 def require_min_role(min_role: str):
     min_level = ROLE_HIERARCHY.get(min_role, 99)
 
     def checker(user: dict = Depends(get_current_user)) -> dict:
+        # Pending accounts have no meaningful role — block them everywhere
+        if user.get("is_pending"):
+            raise HTTPException(status_code=403, detail="Compte en attente d'approbation")
         if ROLE_HIERARCHY.get(user.get("role", ""), -1) < min_level:
             raise HTTPException(status_code=403, detail="Accès refusé")
         return user
@@ -63,9 +75,5 @@ def require_hive_access(current: dict, hive) -> None:
 
 
 def scope_to_apiculteur(current: dict, requested_apiculteur_id: int) -> None:
-    """
-    Raises 403 if a non-superuser tries to access another apiculteur's data.
-    Call this at the top of any endpoint that takes apiculteur_id as a path/query param.
-    """
     if current["role"] != "superuser" and current.get("apiculteur_id") != requested_apiculteur_id:
         raise HTTPException(status_code=403, detail="Accès refusé")

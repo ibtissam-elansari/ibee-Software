@@ -51,6 +51,7 @@ class User(SQLModel, table=True):
     full_name : Optional[str] = Field(default=None)
     phone     : Optional[str] = Field(default=None)
     location  : Optional[str] = Field(default=None)
+    is_pending : bool = Field(default=False)
     apiculteur_id   : Optional[int]  = Field(
         default=None,
         foreign_key="apiculteur.id",
