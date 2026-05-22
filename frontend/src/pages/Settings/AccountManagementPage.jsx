@@ -13,6 +13,7 @@ import {
 import useAuthStore  from '../../store/useAuthStore';
 import UserFormModal from './components/UserFormModal';
 import DeleteUserModal from './components/DeleteUserModal';
+import PendingAccountsPanel from './components/PendingAccountsPanel';
 
 const AccountManagementPage = () => {
   const currentUser = useAuthStore(s => s.user);
@@ -74,7 +75,7 @@ const AccountManagementPage = () => {
             <p className="text-sm text-gray-400 mt-1">Gérez les accès et les rôles de l'équipe.</p>
           </div>
         </div>
-
+      <PendingAccountsPanel/>
       <div className='flex justify-between'>
         {/* Search */}
         <div className="relative max-w-sm mb-6">
